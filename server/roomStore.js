@@ -152,6 +152,7 @@ export function createRoomStore({
       artistName: song.artistName ?? null,
       albumName: song.albumName ?? null,
       instrumental: Boolean(song.instrumental),
+      lyricsOffsetSec: Number(song.lyricsOffsetSec) || 0,
       addedBy: socketId,
       addedAtMs: now(),
     }
@@ -270,6 +271,23 @@ export function createRoomStore({
     return { ok: true, room: publicState(room) }
   }
 
+  function setLyricsOffset({ roomCode, socketId, offsetSec }) {
+    const room = getRoom(roomCode)
+    if (!room) return { ok: false, error: 'Room not found' }
+    if (room.hostId !== socketId) return { ok: false, error: 'Only the host can adjust lyrics offset' }
+    if (!room.currentSong) return { ok: false, error: 'No song is playing' }
+
+    const offset = Number(offsetSec)
+    if (!Number.isFinite(offset)) return { ok: false, error: 'Invalid offset' }
+
+    room.currentSong = {
+      ...room.currentSong,
+      lyricsOffsetSec: Math.max(-30, Math.min(30, offset)),
+    }
+
+    return { ok: true, room: publicState(room) }
+  }
+
   return {
     addSong,
     advanceSinger,
@@ -282,6 +300,7 @@ export function createRoomStore({
     leaveRoom,
     playNextSong,
     publicState,
+    setLyricsOffset,
     setRotationMode,
   }
 }

@@ -193,16 +193,48 @@ export async function fetchYoutubeMetadata(url) {
   }
 }
 
+export const KARAOKE_SEARCH_SUFFIXES = ['karaoke', 'instrumental karaoke', 'karaoke version']
+
 /**
- * Searches YouTube for a song by track name + artist name.
- * Uses YouTube Data API v3 if YOUTUBE_API_KEY is set, otherwise falls back to public Invidious instances.
+ * Builds a YouTube search query for karaoke backing tracks.
+ * LRCLIB supplies clean artist/track metadata; YouTube gets a karaoke-specific query.
+ */
+export function buildKaraokeSearchQuery(artistName, trackName, suffix = 'karaoke') {
+  const cleanArtist = String(artistName ?? '').trim()
+  const cleanTrack = String(trackName ?? '').trim()
+  return `${cleanArtist} ${cleanTrack} ${suffix}`.trim()
+}
+
+function parseYoutubeSearchResult(item, fallbackTitle) {
+  const videoId = item?.id?.videoId ?? item?.videoId
+  if (!videoId) return null
+
+  const title =
+    item?.snippet?.title ??
+    item?.title?.runs?.[0]?.text ??
+    item?.title?.simpleText ??
+    fallbackTitle
+
+  const thumbnail =
+    item?.snippet?.thumbnails?.medium?.url ??
+    item?.thumbnail?.thumbnails?.[0]?.url ??
+    `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
+
+  return {
+    videoId,
+    url: `https://www.youtube.com/watch?v=${videoId}`,
+    title,
+    thumbnail,
+  }
+}
+
+/**
+ * Runs a single YouTube search query via API or page scrape.
  *
- * @param {string} trackName
- * @param {string} artistName
+ * @param {string} query
  * @returns {Promise<{videoId: string, url: string, title: string, thumbnail: string}|null>}
  */
-export async function searchYoutubeForSong(trackName, artistName) {
-  const query = `${artistName} ${trackName} official audio`
+export async function searchYoutube(query) {
   const apiKey = env.YOUTUBE_API_KEY
 
   if (apiKey) {
@@ -211,30 +243,22 @@ export async function searchYoutubeForSong(trackName, artistName) {
       const response = await fetch(apiUrl)
       if (response.ok) {
         const data = await response.json()
-        const item = data?.items?.[0]
-        if (item) {
-          const videoId = item.id.videoId
-          return {
-            videoId,
-            url: `https://www.youtube.com/watch?v=${videoId}`,
-            title: item.snippet?.title || `${artistName} - ${trackName}`,
-            thumbnail: item.snippet?.thumbnails?.medium?.url || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
-          }
-        }
+        const parsed = parseYoutubeSearchResult(data?.items?.[0], query)
+        if (parsed) return parsed
       }
     } catch (err) {
-      console.error('YouTube API search failed, trying Invidious:', err.message)
+      console.error('YouTube API search failed, trying scrape fallback:', err.message)
     }
   }
 
-  // Fallback: try scraping YouTube search results directly
   try {
     const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`
     const response = await fetch(url, {
       signal: AbortSignal.timeout(6000),
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      }
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
     })
 
     if (response.ok) {
@@ -248,22 +272,14 @@ export async function searchYoutubeForSong(trackName, artistName) {
 
       if (match) {
         const data = JSON.parse(match[1])
-        const contents = data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents
+        const contents =
+          data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer
+            ?.contents?.[0]?.itemSectionRenderer?.contents
         if (contents && Array.isArray(contents)) {
           for (const item of contents) {
             if (item.videoRenderer) {
-              const vr = item.videoRenderer
-              const videoId = vr.videoId
-              if (videoId) {
-                const title = vr.title?.runs?.[0]?.text || vr.title?.simpleText || `${artistName} - ${trackName}`
-                const thumbnail = vr.thumbnail?.thumbnails?.[0]?.url || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
-                return {
-                  videoId,
-                  url: `https://www.youtube.com/watch?v=${videoId}`,
-                  title,
-                  thumbnail,
-                }
-              }
+              const parsed = parseYoutubeSearchResult(item.videoRenderer, query)
+              if (parsed) return parsed
             }
           }
         }
@@ -273,6 +289,24 @@ export async function searchYoutubeForSong(trackName, artistName) {
     console.warn('Direct YouTube search scraping failed:', err.message)
   }
 
-  console.error('All YouTube search methods exhausted for:', query)
+  return null
+}
+
+/**
+ * Searches YouTube for a karaoke/instrumental backing track.
+ * Tries several karaoke-oriented query suffixes before giving up.
+ *
+ * @param {string} trackName
+ * @param {string} artistName
+ * @returns {Promise<{videoId: string, url: string, title: string, thumbnail: string}|null>}
+ */
+export async function searchYoutubeForSong(trackName, artistName) {
+  for (const suffix of KARAOKE_SEARCH_SUFFIXES) {
+    const query = buildKaraokeSearchQuery(artistName, trackName, suffix)
+    const result = await searchYoutube(query)
+    if (result) return result
+  }
+
+  console.error('All YouTube karaoke search methods exhausted for:', artistName, trackName)
   return null
 }

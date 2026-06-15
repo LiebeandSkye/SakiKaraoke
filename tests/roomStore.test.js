@@ -112,6 +112,45 @@ describe('room store', () => {
     assert.equal(result.room.currentSong.syncedLyrics, '[00:01.00] Lyric')
     assert.equal(result.room.currentSong.plainLyrics, 'Lyric')
     assert.equal(result.room.currentSong.instrumental, false)
+    assert.equal(result.room.currentSong.lyricsOffsetSec, 0)
+  })
+
+  it('lets the host adjust lyrics offset on the current song', () => {
+    const store = createRoomStore({
+      now: () => 1000,
+      makeCode: () => 'ABC123',
+      makeId: () => 'song-1',
+    })
+    store.createRoom({ socketId: 'host', displayName: 'Saki' })
+    store.addSong({
+      roomCode: 'ABC123',
+      socketId: 'host',
+      song: {
+        videoId: 'dQw4w9WgXcQ',
+        url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        title: 'Artist - Track',
+        thumbnail: 'thumb.jpg',
+        durationSec: 213,
+        syncedLyrics: '[00:01.00] Lyric',
+      },
+    })
+
+    const result = store.setLyricsOffset({
+      roomCode: 'ABC123',
+      socketId: 'host',
+      offsetSec: 2,
+    })
+
+    assert.equal(result.ok, true)
+    assert.equal(result.room.currentSong.lyricsOffsetSec, 2)
+
+    const guestAttempt = store.setLyricsOffset({
+      roomCode: 'ABC123',
+      socketId: 'guest',
+      offsetSec: 5,
+    })
+
+    assert.deepEqual(guestAttempt, { ok: false, error: 'Only the host can adjust lyrics offset' })
   })
 
 

@@ -6,7 +6,7 @@ import { readMediaDuration, seekMediaTo } from '../shared/mediaElement.js'
 import { getActiveLyricWindow, parseSyncedLyrics, splitPlainLyrics } from '../shared/lyrics.js'
 
 export default function KaraokePlayer() {
-  const { room, user, controlPlayback, playNext, advanceRotation } = useRoom()
+  const { room, user, controlPlayback, playNext, advanceRotation, setLyricsOffset } = useRoom()
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -27,7 +27,10 @@ export default function KaraokePlayer() {
     () => splitPlainLyrics(currentSong?.plainLyrics),
     [currentSong?.plainLyrics],
   )
-  const lyricWindow = getActiveLyricWindow(syncedLyricLines, currentTime)
+  const lyricWindow = getActiveLyricWindow(
+    syncedLyricLines,
+    currentTime + (currentSong?.lyricsOffsetSec ?? 0),
+  )
   const hasSyncedLyrics = syncedLyricLines.length > 0
   const hasPlainLyrics = !hasSyncedLyrics && plainLyricLines.length > 0
 
@@ -128,6 +131,13 @@ export default function KaraokePlayer() {
       advanceRotation('song-ended')
       playNext()
     }
+  }
+
+  const lyricsOffsetSec = currentSong?.lyricsOffsetSec ?? 0
+
+  const adjustLyricsOffset = (deltaSec) => {
+    if (!isHost || !currentSong) return
+    setLyricsOffset(lyricsOffsetSec + deltaSec)
   }
 
   const usersMap = new Map(room.users.map((u) => [u.id, u]))
@@ -286,6 +296,41 @@ export default function KaraokePlayer() {
           {!isHost && currentSong && (
             <div className="guest-notice">
               <span>Syncing with Host ({usersMap.get(room.hostId)?.displayName || 'Host'})</span>
+            </div>
+          )}
+
+          {isHost && hasSyncedLyrics && currentSong && (
+            <div className="lyrics-offset-controls" title="Adjust if lyrics are early or late vs. the karaoke track">
+              <span className="lyrics-offset-label">Lyrics sync</span>
+              <button
+                type="button"
+                className="control-btn lyrics-offset-btn"
+                onClick={() => adjustLyricsOffset(-1)}
+                aria-label="Delay lyrics by 1 second"
+              >
+                −1s
+              </button>
+              <span className="lyrics-offset-value">
+                {lyricsOffsetSec > 0 ? '+' : ''}
+                {lyricsOffsetSec}s
+              </span>
+              <button
+                type="button"
+                className="control-btn lyrics-offset-btn"
+                onClick={() => adjustLyricsOffset(1)}
+                aria-label="Advance lyrics by 1 second"
+              >
+                +1s
+              </button>
+              {lyricsOffsetSec !== 0 && (
+                <button
+                  type="button"
+                  className="lyrics-offset-reset"
+                  onClick={() => setLyricsOffset(0)}
+                >
+                  Reset
+                </button>
+              )}
             </div>
           )}
         </div>

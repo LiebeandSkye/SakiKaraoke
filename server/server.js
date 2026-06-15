@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { env } from 'node:process'
 
 import { createRoomStore } from './roomStore.js'
+import { fetchLyricsForMetadata } from './lrclib.js'
 import { fetchYoutubeMetadata, searchYoutubeForSong } from './youtube.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -133,7 +134,11 @@ io.on('connection', (socket) => {
         // Song selected from lrclib search — find the YouTube video
         const ytResult = await searchYoutubeForSong(lrclibSong.trackName, lrclibSong.artistName)
         if (!ytResult) {
-          return callback({ ok: false, error: 'Could not find a YouTube video for this song. Try pasting a YouTube URL instead.' })
+          return callback({
+            ok: false,
+            error:
+              'Could not find a karaoke version on YouTube for this song. Try pasting a karaoke YouTube URL instead.',
+          })
         }
         songMetadata = {
           videoId: ytResult.videoId,
@@ -150,8 +155,24 @@ io.on('connection', (socket) => {
           plainLyrics: lrclibSong.plainLyrics ?? null,
         }
       } else if (url) {
-        // Plain YouTube URL — existing flow
         songMetadata = await fetchYoutubeMetadata(url)
+        try {
+          const lyrics = await fetchLyricsForMetadata(songMetadata)
+          if (lyrics) {
+            songMetadata = {
+              ...songMetadata,
+              lrclibId: lyrics.lrclibId ?? null,
+              trackName: lyrics.trackName ?? null,
+              artistName: lyrics.artistName ?? null,
+              albumName: lyrics.albumName ?? null,
+              instrumental: Boolean(lyrics.instrumental),
+              syncedLyrics: lyrics.syncedLyrics ?? null,
+              plainLyrics: lyrics.plainLyrics ?? null,
+            }
+          }
+        } catch (lyricsError) {
+          console.warn('Could not fetch LRCLIB lyrics for YouTube URL:', lyricsError.message)
+        }
       } else {
         return callback({ ok: false, error: 'Provide a YouTube URL or select a song from search' })
       }
@@ -297,6 +318,27 @@ io.on('connection', (socket) => {
       const result = store.setRotationMode({ roomCode, mode })
       if (result.ok) {
         io.to(room.code).emit('room-update', result.room)
+        callback({ ok: true })
+      } else {
+        callback({ ok: false, error: result.error })
+      }
+    } catch (err) {
+      console.error(err)
+      callback({ ok: false, error: err.message })
+    }
+  })
+
+  // Set Lyrics Offset (host adjusts sync when karaoke video timing differs from studio track)
+  socket.on('set-lyrics-offset', ({ roomCode, offsetSec }, callback) => {
+    try {
+      const result = store.setLyricsOffset({
+        roomCode,
+        socketId: socket.id,
+        offsetSec,
+      })
+
+      if (result.ok) {
+        io.to(result.room.code).emit('room-update', result.room)
         callback({ ok: true })
       } else {
         callback({ ok: false, error: result.error })

@@ -157,6 +157,15 @@ export function RoomProvider({ children }) {
     })
   }
 
+  const setLyricsOffset = (offsetSec) => {
+    if (!room) return
+    socket.emit('set-lyrics-offset', { roomCode: room.code, offsetSec }, (res) => {
+      if (!res.ok) {
+        setError(res.error || 'Failed to adjust lyrics sync')
+      }
+    })
+  }
+
   const leaveRoom = () => {
     socket.disconnect()
     // Instantly reconnect so client is ready for a new room
@@ -184,6 +193,7 @@ export function RoomProvider({ children }) {
         playNext,
         advanceRotation,
         changeRotationMode,
+        setLyricsOffset,
         leaveRoom,
       }}
     >
