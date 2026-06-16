@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useRoom } from '../context/RoomContext.jsx'
+import { IoMicSharp } from 'react-icons/io5'
 
 export default function RoomLobby() {
   const { createRoom, joinRoom, error, clearError } = useRoom()
@@ -26,7 +27,9 @@ export default function RoomLobby() {
   return (
     <div className="lobby-container">
       <div className="lobby-card">
-        <h1 className="lobby-title">🎤 SakiKaraoke</h1>
+        <h1 className="lobby-title">
+          <IoMicSharp className="lobby-title-icon" /> SakiKaraoke
+        </h1>
         <p className="lobby-subtitle">Sing and sync with your friends in real-time</p>
 
         {error && (

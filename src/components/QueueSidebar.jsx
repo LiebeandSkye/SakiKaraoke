@@ -1,4 +1,5 @@
 import { useRoom } from '../context/RoomContext.jsx'
+import { IoMicSharp, IoDiscSharp, IoListSharp, IoPlayForwardSharp } from 'react-icons/io5'
 
 export default function QueueSidebar() {
   const { room, user, playNext, changeRotationMode, advanceRotation, leaveRoom } = useRoom()
@@ -38,7 +39,7 @@ export default function QueueSidebar() {
 
       {/* Singer Rotation & Users List */}
       <div className="sidebar-section rotation-section">
-        <h3>🎤 Singer Rotation</h3>
+        <h3><IoMicSharp className="sidebar-icon" /> Singer Rotation</h3>
         <div className="singers-list">
           {room.rotation.singerIds.map((id, index) => {
             const u = usersMap.get(id)
@@ -96,7 +97,7 @@ export default function QueueSidebar() {
 
       {/* Now Playing */}
       <div className="sidebar-section now-playing-section">
-        <h3>💿 Now Playing</h3>
+        <h3><IoDiscSharp className="sidebar-icon" /> Now Playing</h3>
         {room.currentSong ? (
           <div className="now-playing-card">
             <div className="thumbnail-wrapper">
@@ -110,13 +111,13 @@ export default function QueueSidebar() {
               </p>
               {currentSinger && (
                 <p className="song-singer">
-                  🎤 Singer: <strong className="glow-text">{currentSinger.displayName}</strong>
+                  <IoMicSharp className="inline-icon" /> Singer: <strong className="glow-text">{currentSinger.displayName}</strong>
                 </p>
               )}
             </div>
             {isHost && (
               <button type="button" className="btn btn-primary btn-skip" onClick={playNext}>
-                Skip Song ⏭️
+                Skip Song <IoPlayForwardSharp className="btn-icon-right" />
               </button>
             )}
           </div>
@@ -125,7 +126,7 @@ export default function QueueSidebar() {
             <p>No song active. Add a YouTube URL to get started!</p>
             {isHost && room.queue.length > 0 && (
               <button type="button" className="btn btn-primary" onClick={playNext}>
-                Play Next Song ⏭️
+                Play Next Song <IoPlayForwardSharp className="btn-icon-right" />
               </button>
             )}
           </div>
@@ -134,7 +135,7 @@ export default function QueueSidebar() {
 
       {/* Upcoming Queue */}
       <div className="sidebar-section queue-section">
-        <h3>📋 Upcoming Queue ({room.queue.length})</h3>
+        <h3><IoListSharp className="sidebar-icon" /> Upcoming Queue ({room.queue.length})</h3>
         <div className="queue-list">
           {room.queue.length > 0 ? (
             room.queue.map((song, index) => (

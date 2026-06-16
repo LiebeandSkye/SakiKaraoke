@@ -3,6 +3,7 @@ import RoomLobby from './components/RoomLobby.jsx'
 import KaraokePlayer from './components/KaraokePlayer.jsx'
 import QueueSidebar from './components/QueueSidebar.jsx'
 import SongSearch from './components/SongSearch.jsx'
+import { IoMicSharp } from 'react-icons/io5'
 import './App.css'
 
 function MainApp() {
@@ -16,7 +17,7 @@ function MainApp() {
     <div className="karaoke-app-layout animated-fade-in">
       <header className="app-header">
         <div className="logo-section">
-          <span className="logo-emoji">🎤</span>
+          <IoMicSharp className="logo-icon" />
           <h2>SakiKaraoke</h2>
         </div>
         <div className="connection-status">

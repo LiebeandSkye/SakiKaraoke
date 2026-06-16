@@ -4,6 +4,16 @@ import { useRoom } from '../context/RoomContext.jsx'
 import { useVideoSync } from '../hooks/useVideoSync.js'
 import { readMediaDuration, seekMediaTo } from '../shared/mediaElement.js'
 import { getActiveLyricWindow, parseSyncedLyrics, splitPlainLyrics } from '../shared/lyrics.js'
+import {
+  IoPlaySharp,
+  IoPauseSharp,
+  IoVolumeMuteSharp,
+  IoVolumeLowSharp,
+  IoVolumeHighSharp,
+  IoRibbonSharp,
+  IoMicSharp,
+  IoMusicalNotesSharp,
+} from 'react-icons/io5'
 
 export default function KaraokePlayer() {
   const { room, user, controlPlayback, playNext, advanceRotation, setLyricsOffset } = useRoom()
@@ -161,7 +171,15 @@ export default function KaraokePlayer() {
         </div>
         <div className="status-badges">
           <span className={`badge role-badge ${isHost ? 'host' : 'guest'}`}>
-            {isHost ? '👑 HOST' : '🎤 SINGER'}
+            {isHost ? (
+              <>
+                <IoRibbonSharp className="badge-icon" /> HOST
+              </>
+            ) : (
+              <>
+                <IoMicSharp className="badge-icon" /> SINGER
+              </>
+            )}
           </span>
           <span className="badge sync-badge">
             <span className="sync-dot"></span> LIVE SYNCED
@@ -228,7 +246,7 @@ export default function KaraokePlayer() {
         ) : (
           <div className="placeholder-screen">
             <div className="placeholder-content">
-              <span className="music-icon">🎵</span>
+              <IoMusicalNotesSharp className="music-icon" />
               <h3>No Song Active</h3>
               <p>Add a YouTube video link below to start singing.</p>
             </div>
@@ -247,7 +265,7 @@ export default function KaraokePlayer() {
             disabled={!isHost}
             title={isHost ? (isPlaying ? 'Pause' : 'Play') : 'Only host can control playback'}
           >
-            {isPlaying ? '⏸️' : '▶️'}
+            {isPlaying ? <IoPauseSharp /> : <IoPlaySharp />}
           </button>
 
           {/* Progress Slider */}
@@ -277,7 +295,13 @@ export default function KaraokePlayer() {
               className="control-btn volume-btn"
               onClick={() => setMuted(!muted)}
             >
-              {muted || volume === 0 ? '🔇' : volume < 0.5 ? '🔉' : '🔊'}
+              {muted || volume === 0 ? (
+                <IoVolumeMuteSharp />
+              ) : volume < 0.5 ? (
+                <IoVolumeLowSharp />
+              ) : (
+                <IoVolumeHighSharp />
+              )}
             </button>
             <input
               type="range"
