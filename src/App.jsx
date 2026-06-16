@@ -39,6 +39,11 @@ function MainApp() {
 function App() {
   return (
     <RoomProvider>
+      <div className="liquid-glass-background">
+        <div className="bg-blob blob-1"></div>
+        <div className="bg-blob blob-2"></div>
+        <div className="bg-blob blob-3"></div>
+      </div>
       <MainApp />
     </RoomProvider>
   )
