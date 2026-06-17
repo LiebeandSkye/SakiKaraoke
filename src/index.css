@@ -3,44 +3,44 @@
 :root {
   --font-family: 'Outfit', system-ui, -apple-system, sans-serif;
   
-  /* Apple Glassmorphism Design Tokens (Light Theme) */
-  --glass-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.25));
-  --glass-bg-hover: linear-gradient(135deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.4));
-  --glass-bg-active: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.5));
+  /* Apple Glassmorphism Design Tokens (Dark Theme) */
+  --glass-bg: linear-gradient(135deg, rgba(35, 38, 43, 0.4), rgba(20, 22, 25, 0.4));
+  --glass-bg-hover: linear-gradient(135deg, rgba(45, 48, 54, 0.5), rgba(28, 30, 34, 0.5));
+  --glass-bg-active: linear-gradient(135deg, rgba(55, 58, 64, 0.6), rgba(35, 38, 42, 0.6));
   
-  --glass-border: rgba(255, 255, 255, 0.6);
-  --glass-border-hover: rgba(255, 255, 255, 0.85);
-  --glass-border-focus: rgba(0, 113, 227, 0.5); /* Apple Blue Focus */
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-hover: rgba(255, 255, 255, 0.14);
+  --glass-border-focus: rgba(255, 255, 255, 0.25);
   
-  --glass-blur: blur(30px) saturate(180%);
-  --glass-shadow: 0 10px 30px 0 rgba(0, 0, 0, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.9);
-  --glass-shadow-hover: 0 16px 45px 0 rgba(0, 0, 0, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.95);
+  --glass-blur: blur(30px) saturate(140%);
+  --glass-shadow: 0 10px 35px 0 rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  --glass-shadow-hover: 0 16px 45px 0 rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.08);
   
   /* Legacy names mapping */
   --panel-bg: var(--glass-bg);
   --panel-border: var(--glass-border);
   --panel-border-focus: var(--glass-border-focus);
   
-  /* Dynamic Highlights (Apple Palette) */
-  --primary: #0071e3; /* Apple Blue */
-  --primary-hover: #147ce5;
-  --primary-glow: rgba(0, 113, 227, 0.25);
+  /* Grey/Metallic Highlights (No Vibrant Colors) */
+  --primary: #f5f5f7;
+  --primary-hover: #ffffff;
+  --primary-glow: rgba(255, 255, 255, 0.15);
   
-  --secondary: #a352fc; /* Apple Purple */
-  --secondary-hover: #b56dff;
-  --secondary-glow: rgba(163, 82, 252, 0.25);
+  --secondary: #8e8e93;
+  --secondary-hover: #a1a1a6;
+  --secondary-glow: rgba(255, 255, 255, 0.05);
   
-  --danger: #ff3b30; /* Apple Red */
-  --danger-hover: #ff453a;
+  --danger: rgba(255, 69, 58, 0.85); /* Slightly muted red for safety action, kept elegant */
+  --danger-hover: rgba(255, 69, 58, 1);
   
-  --text-primary: #1d1d1f; /* SF Pro/Mac system text */
-  --text-secondary: #515154;
-  --text-muted: #86868b;
+  --text-primary: #f5f5f7; /* High-contrast white */
+  --text-secondary: #a1a1a6; /* Light gray */
+  --text-muted: #6e6e73; /* Mid gray */
   
-  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.03);
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.2);
   --shadow-lg: var(--glass-shadow);
   
-  background: #f5f7fa;
+  background: #0d0e10;
   color: var(--text-primary);
   font-family: var(--font-family);
   margin: 0;
@@ -56,6 +56,10 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  /* background-image: url('https://imgs.search.brave.com/IzH0l1HSwyAaTDb7plHAcWQfYmjm3u5aWXs-Lmuef_c/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9zdGF0/aWMudmVjdGVlenku/Y29tL3N5c3RlbS9y/ZXNvdXJjZXMvdGh1/bWJuYWlscy8wNTIv/MTI2LzczMy9zbWFs/bC93aGl0ZS1mcm9z/dGVkLWdsYXNzLWJh/Y2tncm91bmQtd2l0/aC1saWdodC1iZWFt/LWZyb20tdG9wLWFu/ZC1ncmFpbnMtcGhv/dG8uanBn');
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center; */
 }
 
 * {
@@ -69,22 +73,22 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.02);
+  background: rgba(255, 255, 255, 0.01);
   border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.1);
   border: 2px solid transparent;
   background-clip: padding-box;
   border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.2);
 }
 
-/* Background Blobs for Liquid Depth (Light Pastel Mode) */
+/* Background Blobs for Liquid Depth (Dark Mode) */
 .liquid-glass-background {
   position: fixed;
   top: 0;
@@ -93,7 +97,7 @@ body {
   height: 100vh;
   z-index: -1;
   overflow: hidden;
-  background: radial-gradient(circle at 50% 50%, #f4f7fc 0%, #e2e8f4 100%);
+  background: radial-gradient(circle at center, #1b1d20 0%, #0c0d0f 100%);
   pointer-events: none;
 }
 
@@ -101,14 +105,14 @@ body {
   position: absolute;
   border-radius: 50%;
   filter: blur(140px);
-  opacity: 0.6;
+  opacity: 0.12;
   will-change: transform;
 }
 
 .blob-1 {
   width: min(550px, 80vw);
   height: min(550px, 80vw);
-  background: radial-gradient(circle, rgba(255, 182, 193, 0.45) 0%, rgba(255, 182, 193, 0) 70%);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
   top: -10%;
   left: -10%;
   animation: float-blob-1 25s infinite alternate ease-in-out;
@@ -117,7 +121,7 @@ body {
 .blob-2 {
   width: min(650px, 90vw);
   height: min(650px, 90vw);
-  background: radial-gradient(circle, rgba(135, 206, 250, 0.45) 0%, rgba(135, 206, 250, 0) 70%);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 70%);
   bottom: -15%;
   right: -5%;
   animation: float-blob-2 30s infinite alternate ease-in-out;
@@ -126,7 +130,7 @@ body {
 .blob-3 {
   width: min(480px, 70vw);
   height: min(480px, 70vw);
-  background: radial-gradient(circle, rgba(221, 160, 221, 0.4) 0%, rgba(221, 160, 221, 0) 70%);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 70%);
   top: 40%;
   left: 50%;
   transform: translate(-50%, -50%);
@@ -169,10 +173,10 @@ body {
 
 @keyframes pulse-glow {
   0%, 100% {
-    box-shadow: 0 0 12px rgba(0, 113, 227, 0.15), var(--glass-shadow);
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.05), var(--glass-shadow);
   }
   50% {
-    box-shadow: 0 0 24px rgba(0, 113, 227, 0.35), var(--glass-shadow-hover);
+    box-shadow: 0 0 24px rgba(255, 255, 255, 0.12), var(--glass-shadow-hover);
   }
 }
 

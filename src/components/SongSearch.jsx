@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRoom } from '../context/RoomContext.jsx'
 import { searchSongs, formatDuration } from '../api/lrclib.js'
 import { isValidYoutubeUrl } from '../shared/youtubeUrl.js'
+import { parseSyncedLyrics } from '../shared/lyrics.js'
 
 const TABS = { SEARCH: 'search', URL: 'url' }
 
@@ -15,6 +16,7 @@ export default function SongSearch() {
   const [addingId, setAddingId] = useState(null)
   const [url, setUrl] = useState('')
   const [urlError, setUrlError] = useState(null)
+  const [viewingLyrics, setViewingLyrics] = useState(null)
   const debounceRef = useRef(null)
 
   const handleQueryChange = useCallback((event) => {
@@ -52,12 +54,6 @@ export default function SongSearch() {
     setTimeout(() => setAddingId(null), 1500)
   }
 
-  const handleResultKeyDown = (event, song) => {
-    if (event.key !== 'Enter' && event.key !== ' ') return
-    event.preventDefault()
-    handleAddFromSearch(song)
-  }
-
   const handleUrlSubmit = (event) => {
     event.preventDefault()
     setUrlError(null)
@@ -72,6 +68,18 @@ export default function SongSearch() {
 
     addSong(trimmedUrl)
     setUrl('')
+  }
+
+  /** Build lyrics lines for the modal display */
+  const getLyricsContent = (song) => {
+    if (song.syncedLyrics) {
+      const parsed = parseSyncedLyrics(song.syncedLyrics)
+      return parsed.map((line) => line.text).filter(Boolean)
+    }
+    if (song.plainLyrics) {
+      return song.plainLyrics.split(/\r?\n/).map((l) => l.trim())
+    }
+    return null
   }
 
   return (
@@ -116,17 +124,13 @@ export default function SongSearch() {
                 <div
                   key={song.id}
                   className="search-result-item"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => handleAddFromSearch(song)}
-                  onKeyDown={(event) => handleResultKeyDown(event, song)}
                 >
                   <div className="search-result-info">
                     <span className="search-result-title">{song.trackName}</span>
                     <span className="search-result-meta">
                       {song.artistName}
-                      {song.albumName ? ` - ${song.albumName}` : ''}
-                      {' - '}
+                      {song.albumName ? ` — ${song.albumName}` : ''}
+                      {' · '}
                       {formatDuration(song.duration)}
                     </span>
                     <span className="search-result-badges">
@@ -141,17 +145,25 @@ export default function SongSearch() {
                       )}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    className={`btn btn-primary btn-sm btn-add-search ${addingId === song.id ? 'adding' : ''}`}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      handleAddFromSearch(song)
-                    }}
-                    disabled={addingId === song.id}
-                  >
-                    {addingId === song.id ? 'Adding...' : 'Add'}
-                  </button>
+                  <div className="search-result-actions">
+                    {(song.hasSyncedLyrics || song.plainLyrics) && (
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setViewingLyrics(song)}
+                      >
+                        View Lyrics
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className={`btn btn-primary btn-sm btn-add-search ${addingId === song.id ? 'adding' : ''}`}
+                      onClick={() => handleAddFromSearch(song)}
+                      disabled={addingId === song.id}
+                    >
+                      {addingId === song.id ? 'Adding...' : 'Add'}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -186,6 +198,54 @@ export default function SongSearch() {
           </form>
           {urlError && <p className="error-text animated-fade-in">{urlError}</p>}
           {roomError && <p className="error-text animated-fade-in">{roomError}</p>}
+        </div>
+      )}
+
+      {/* Lyrics Modal Viewer */}
+      {viewingLyrics && (
+        <div
+          className="lyrics-modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setViewingLyrics(null)
+          }}
+        >
+          <div className="lyrics-modal-content">
+            <div className="lyrics-modal-header">
+              <div className="lyrics-modal-header-info">
+                <h3 className="lyrics-modal-title">{viewingLyrics.trackName}</h3>
+                <p className="lyrics-modal-artist">
+                  {viewingLyrics.artistName}
+                  {viewingLyrics.albumName ? ` — ${viewingLyrics.albumName}` : ''}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="lyrics-modal-close"
+                onClick={() => setViewingLyrics(null)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="lyrics-modal-body">
+              {(() => {
+                const lines = getLyricsContent(viewingLyrics)
+                if (!lines || lines.length === 0) {
+                  return (
+                    <p className="lyrics-modal-no-lyrics">
+                      {viewingLyrics.instrumental
+                        ? 'This is an instrumental track.'
+                        : 'No lyrics available for this song.'}
+                    </p>
+                  )
+                }
+                return lines.map((line, i) => (
+                  <p key={i} className="lyrics-modal-line">
+                    {line || '\u00A0'}
+                  </p>
+                ))
+              })()}
+            </div>
+          </div>
         </div>
       )}
     </div>
