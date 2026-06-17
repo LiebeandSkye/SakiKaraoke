@@ -76,6 +76,13 @@ export default function KaraokePlayer() {
     return `${m}:${s.toString().padStart(2, '0')}`
   }
 
+  // Compute slider fill background for visual progress track
+  const getSliderFill = (value, min, max, fillColor = 'rgba(255,255,255,0.65)') => {
+    const pct = max > 0 ? ((value - min) / (max - min)) * 100 : 0
+    return {
+      background: `linear-gradient(to right, ${fillColor} 0%, ${fillColor} ${pct}%, rgba(255,255,255,0.08) ${pct}%, rgba(255,255,255,0.08) 100%)`,
+    }
+  }
   // Host Control Handlers
   const handlePlayPause = () => {
     if (!isHost) return
@@ -282,6 +289,7 @@ export default function KaraokePlayer() {
               onMouseUp={handleSeekMouseUp}
               disabled={!isHost || !currentSong}
               className={`timeline-slider ${!isHost ? 'guest-timeline' : ''}`}
+              style={getSliderFill(currentTime, 0, duration || 100, 'rgba(255,255,255,0.7)')}
             />
             <span className="time-display">{formatTime(duration)}</span>
           </div>
@@ -314,6 +322,7 @@ export default function KaraokePlayer() {
                 setMuted(false)
               }}
               className="volume-slider"
+              style={getSliderFill(muted ? 0 : volume, 0, 1, 'rgba(255,255,255,0.6)')}
             />
           </div>
 

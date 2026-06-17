@@ -3,18 +3,18 @@
 :root {
   --font-family: 'Outfit', system-ui, -apple-system, sans-serif;
   
-  /* Apple Glassmorphism Design Tokens (Dark Theme) */
-  --glass-bg: linear-gradient(135deg, rgba(35, 38, 43, 0.4), rgba(20, 22, 25, 0.4));
-  --glass-bg-hover: linear-gradient(135deg, rgba(45, 48, 54, 0.5), rgba(28, 30, 34, 0.5));
-  --glass-bg-active: linear-gradient(135deg, rgba(55, 58, 64, 0.6), rgba(35, 38, 42, 0.6));
+  /* Premium Liquid Glass Design Tokens (Refractive & Specular-reflective) */
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-bg-hover: rgba(255, 255, 255, 0.12);
+  --glass-bg-active: rgba(255, 255, 255, 0.18);
   
   --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-border-hover: rgba(255, 255, 255, 0.14);
-  --glass-border-focus: rgba(255, 255, 255, 0.25);
+  --glass-border-hover: rgba(255, 255, 255, 0.16);
+  --glass-border-focus: rgba(255, 255, 255, 0.3);
   
-  --glass-blur: blur(30px) saturate(140%);
-  --glass-shadow: 0 10px 35px 0 rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.05);
-  --glass-shadow-hover: 0 16px 45px 0 rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.08);
+  --glass-blur: blur(20px);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  --glass-shadow-hover: 0 12px 40px 0 rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.08);
   
   /* Legacy names mapping */
   --panel-bg: var(--glass-bg);
@@ -40,7 +40,7 @@
   --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.2);
   --shadow-lg: var(--glass-shadow);
   
-  background: #0d0e10;
+  background: #08090b;
   color: var(--text-primary);
   font-family: var(--font-family);
   margin: 0;
@@ -56,10 +56,6 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
-  /* background-image: url('https://imgs.search.brave.com/IzH0l1HSwyAaTDb7plHAcWQfYmjm3u5aWXs-Lmuef_c/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9zdGF0/aWMudmVjdGVlenku/Y29tL3N5c3RlbS9y/ZXNvdXJjZXMvdGh1/bWJuYWlscy8wNTIv/MTI2LzczMy9zbWFs/bC93aGl0ZS1mcm9z/dGVkLWdsYXNzLWJh/Y2tncm91bmQtd2l0/aC1saWdodC1iZWFt/LWZyb20tdG9wLWFu/ZC1ncmFpbnMtcGhv/dG8uanBn');
-  background-repeat: no-repeat;
-  background-size: cover;
-  background-position: center; */
 }
 
 * {
@@ -88,6 +84,38 @@ body {
   background: rgba(255, 255, 255, 0.2);
 }
 
+/* Liquid Glass Utility Styles */
+.liquid-glass-panel {
+  position: relative;
+  isolation: isolate;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  box-shadow: var(--glass-shadow);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-glass-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  backdrop-filter: var(--glass-blur);
+  filter: url(#glass-distortion);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.liquid-glass-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 1.5px 1.5px 1.5px rgba(255, 255, 255, 0.2), inset -1.5px -1.5px 1.5px rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+  transition: box-shadow 0.3s ease;
+}
+
 /* Background Blobs for Liquid Depth (Dark Mode) */
 .liquid-glass-background {
   position: fixed;
@@ -97,40 +125,43 @@ body {
   height: 100vh;
   z-index: -1;
   overflow: hidden;
-  background: radial-gradient(circle at center, #1b1d20 0%, #0c0d0f 100%);
+  background: radial-gradient(circle at center, #0e1013 0%, #050607 100%);
   pointer-events: none;
+  contain: strict;
 }
 
 .bg-blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(140px);
-  opacity: 0.12;
+  filter: blur(130px);
+  opacity: 0.35;
   will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .blob-1 {
-  width: min(550px, 80vw);
-  height: min(550px, 80vw);
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
+  width: min(600px, 85vw);
+  height: min(600px, 85vw);
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.45) 0%, rgba(168, 85, 247, 0) 70%);
   top: -10%;
   left: -10%;
   animation: float-blob-1 25s infinite alternate ease-in-out;
 }
 
 .blob-2 {
-  width: min(650px, 90vw);
-  height: min(650px, 90vw);
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 70%);
+  width: min(700px, 95vw);
+  height: min(700px, 95vw);
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.35) 0%, rgba(244, 63, 94, 0) 70%);
   bottom: -15%;
   right: -5%;
   animation: float-blob-2 30s infinite alternate ease-in-out;
 }
 
 .blob-3 {
-  width: min(480px, 70vw);
-  height: min(480px, 70vw);
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 70%);
+  width: min(520px, 75vw);
+  height: min(520px, 75vw);
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.38) 0%, rgba(59, 130, 246, 0) 70%);
   top: 40%;
   left: 50%;
   transform: translate(-50%, -50%);

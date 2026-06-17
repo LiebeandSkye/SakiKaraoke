@@ -25,9 +25,9 @@ export default function QueueSidebar() {
   }
 
   return (
-    <aside className="queue-sidebar">
+    <aside className="queue-column">
       {/* Room Header Info */}
-      <div className="sidebar-section room-info-header">
+      <div className="queue-card room-info-card liquid-glass-panel">
         <div className="room-code-badge" onClick={handleCopyCode} title="Click to copy">
           <span className="label">ROOM CODE</span>
           <span className="code">{room.code}</span>
@@ -38,7 +38,7 @@ export default function QueueSidebar() {
       </div>
 
       {/* Singer Rotation & Users List */}
-      <div className="sidebar-section rotation-section">
+      <div className="queue-card rotation-card liquid-glass-panel">
         <h3><IoMicSharp className="sidebar-icon" /> Singer Rotation</h3>
         <div className="singers-list">
           {room.rotation.singerIds.map((id, index) => {
@@ -67,14 +67,14 @@ export default function QueueSidebar() {
             className="btn btn-secondary btn-sm"
             onClick={() => advanceRotation('segment-ended')}
           >
-            Next Segment Turn
+            Prev Singer
           </button>
           <button
             type="button"
             className="btn btn-secondary btn-sm"
             onClick={() => advanceRotation('song-ended')}
           >
-            Next Song Turn
+            Next Singer
           </button>
         </div>
 
@@ -87,7 +87,7 @@ export default function QueueSidebar() {
               value={room.rotation.mode}
               onChange={(e) => changeRotationMode(e.target.value)}
             >
-              <option value="auto">Auto (2 users: segment, 3+: song)</option>
+              <option value="auto">Auto (2 users: segment)</option>
               <option value="segment">Segment (advance every segment)</option>
               <option value="song">Song (advance every song)</option>
             </select>
@@ -96,10 +96,10 @@ export default function QueueSidebar() {
       </div>
 
       {/* Now Playing */}
-      <div className="sidebar-section now-playing-section">
+      <div className="queue-card now-playing-card liquid-glass-panel">
         <h3><IoDiscSharp className="sidebar-icon" /> Now Playing</h3>
         {room.currentSong ? (
-          <div className="now-playing-card">
+          <div className="now-playing-card-content">
             <div className="thumbnail-wrapper">
               <img src={room.currentSong.thumbnail} alt={room.currentSong.title} />
               <span className="duration-tag">{formatDuration(room.currentSong.durationSec)}</span>
@@ -134,7 +134,7 @@ export default function QueueSidebar() {
       </div>
 
       {/* Upcoming Queue */}
-      <div className="sidebar-section queue-section">
+      <div className="queue-card queue-list-card liquid-glass-panel">
         <h3><IoListSharp className="sidebar-icon" /> Upcoming Queue ({room.queue.length})</h3>
         <div className="queue-list">
           {room.queue.length > 0 ? (
