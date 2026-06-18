@@ -1,8 +1,12 @@
+import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRoom } from '../context/RoomContext.jsx'
-import { IoMicSharp, IoDiscSharp, IoListSharp, IoPlayForwardSharp } from 'react-icons/io5'
+import { IoMicSharp, IoDiscSharp, IoListSharp, IoPlayForwardSharp, IoCheckmarkSharp } from 'react-icons/io5'
 
 export default function QueueSidebar() {
   const { room, user, playNext, changeRotationMode, advanceRotation, leaveRoom } = useRoom()
+  const [showCopyNotification, setShowCopyNotification] = useState(false)
+  const [showLeaveConfirmation, setShowLeaveConfirmation] = useState(false)
 
   if (!room) return null
 
@@ -21,18 +25,69 @@ export default function QueueSidebar() {
   // Copy room code to clipboard
   const handleCopyCode = () => {
     navigator.clipboard.writeText(room.code)
-    alert('Room code copied to clipboard!')
+    setShowCopyNotification(true)
+    setTimeout(() => setShowCopyNotification(false), 2000)
+  }
+
+  // Handle leave room with confirmation
+  const handleLeaveRoom = () => {
+    setShowLeaveConfirmation(true)
+  }
+
+  const confirmLeaveRoom = () => {
+    leaveRoom()
+    setShowLeaveConfirmation(false)
+  }
+
+  const cancelLeaveRoom = () => {
+    setShowLeaveConfirmation(false)
   }
 
   return (
     <aside className="queue-column">
+      {/* Copy Notification */}
+      {showCopyNotification && createPortal(
+        <div className="copy-notification liquid-glass-notification">
+          <IoCheckmarkSharp className="notification-icon" />
+          <span>Room code copied!</span>
+        </div>,
+        document.body
+      )}
+
+      {/* Leave Room Confirmation Modal */}
+      {showLeaveConfirmation && createPortal(
+        <div className="confirmation-modal" onClick={cancelLeaveRoom}>
+          <div className="confirmation-content" onClick={(e) => e.stopPropagation()}>
+            <h3>Leave Room</h3>
+            <p>Are you sure you want to leave?</p>
+            <div className="confirmation-buttons">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={cancelLeaveRoom}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={confirmLeaveRoom}
+              >
+                Leave
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* Room Header Info */}
       <div className="queue-card room-info-card liquid-glass-panel">
         <div className="room-code-badge" onClick={handleCopyCode} title="Click to copy">
           <span className="label">ROOM CODE</span>
           <span className="code">{room.code}</span>
         </div>
-        <button type="button" className="btn btn-danger btn-leave" onClick={leaveRoom}>
+        <button type="button" className="btn btn-danger btn-leave" onClick={handleLeaveRoom}>
           Leave Room
         </button>
       </div>

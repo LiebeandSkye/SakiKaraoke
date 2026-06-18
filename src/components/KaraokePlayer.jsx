@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import ReactPlayer from 'react-player'
 import { useRoom } from '../context/RoomContext.jsx'
 import { useVideoSync } from '../hooks/useVideoSync.js'
@@ -23,6 +24,19 @@ export default function KaraokePlayer() {
   const [isSeeking, setIsSeeking] = useState(false)
   const [volume, setVolume] = useState(0.8)
   const [muted, setMuted] = useState(false)
+  const [showFullLyrics, setShowFullLyrics] = useState(false)
+
+  // Lock body scroll when fullscreen lyrics modal is open
+  useEffect(() => {
+    if (showFullLyrics) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [showFullLyrics])
 
   const playerRef = useRef(null)
   const triggeredSegmentsRef = useRef(new Set())
@@ -162,6 +176,43 @@ export default function KaraokePlayer() {
 
   return (
     <div className="karaoke-player-container">
+      {/* Full-screen Lyrics Modal */}
+      {showFullLyrics && (hasSyncedLyrics || hasPlainLyrics) && createPortal(
+        <div className="fullscreen-lyrics-modal" onClick={() => setShowFullLyrics(false)}>
+          <div className="fullscreen-lyrics-content" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="close-lyrics-btn"
+              onClick={() => setShowFullLyrics(false)}
+              aria-label="Close lyrics"
+            >
+              ×
+            </button>
+            <div className="fullscreen-lyrics-text">
+              {hasSyncedLyrics ? (
+                <>
+                  <p className="fullscreen-lyric-current">
+                    {lyricWindow.current?.text || '...'}
+                  </p>
+                  {lyricWindow.next?.text && (
+                    <p className="fullscreen-lyric-next">{lyricWindow.next.text}</p>
+                  )}
+                  <div className="fullscreen-lyric-progress">
+                    <span style={{ width: `${lyricWindow.progress * 100}%` }} />
+                  </div>
+                </>
+              ) : (
+                plainLyricLines.map((line, idx) => (
+                  <p key={idx} className="fullscreen-plain-lyric">{line}</p>
+                ))
+              )}
+            </div>
+            <p className="fullscreen-lyrics-hint">Click anywhere to close</p>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* Player Header */}
       <div className="player-header">
         <div className="singer-info">
@@ -365,6 +416,16 @@ export default function KaraokePlayer() {
                 </button>
               )}
             </div>
+          )}
+
+          {(hasSyncedLyrics || hasPlainLyrics) && currentSong && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm view-lyrics-btn"
+              onClick={() => setShowFullLyrics(true)}
+            >
+              View Lyrics
+            </button>
           )}
         </div>
       </div>
