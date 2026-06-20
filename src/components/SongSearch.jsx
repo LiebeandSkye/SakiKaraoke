@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRoom } from '../context/RoomContext.jsx'
 import { searchSongs, formatDuration } from '../api/lrclib.js'
 import { isValidYoutubeUrl } from '../shared/youtubeUrl.js'
@@ -46,6 +47,17 @@ export default function SongSearch() {
   }, [])
 
   useEffect(() => () => clearTimeout(debounceRef.current), [])
+
+  useEffect(() => {
+    if (viewingLyrics) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [viewingLyrics])
 
   const handleAddFromSearch = (song) => {
     if (addingId === song.id) return
@@ -202,7 +214,7 @@ export default function SongSearch() {
       )}
 
       {/* Lyrics Modal Viewer */}
-      {viewingLyrics && (
+      {viewingLyrics && createPortal(
         <div
           className="lyrics-modal-overlay"
           onClick={(e) => {
@@ -246,7 +258,8 @@ export default function SongSearch() {
               })()}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

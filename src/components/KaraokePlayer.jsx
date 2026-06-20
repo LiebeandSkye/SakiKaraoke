@@ -4,7 +4,12 @@ import ReactPlayer from 'react-player'
 import { useRoom } from '../context/RoomContext.jsx'
 import { useVideoSync } from '../hooks/useVideoSync.js'
 import { readMediaDuration, seekMediaTo } from '../shared/mediaElement.js'
-import { getActiveLyricWindow, parseSyncedLyrics, splitPlainLyrics } from '../shared/lyrics.js'
+import {
+  getActiveLyricWindow,
+  getVisibleLyricLines,
+  parseSyncedLyrics,
+  splitPlainLyrics,
+} from '../shared/lyrics.js'
 import {
   IoPlaySharp,
   IoPauseSharp,
@@ -25,6 +30,7 @@ export default function KaraokePlayer() {
   const [volume, setVolume] = useState(0.8)
   const [muted, setMuted] = useState(false)
   const [showFullLyrics, setShowFullLyrics] = useState(false)
+  const [showLyricsPanel, setShowLyricsPanel] = useState(true)
 
   // Lock body scroll when fullscreen lyrics modal is open
   useEffect(() => {
@@ -54,6 +60,11 @@ export default function KaraokePlayer() {
   const lyricWindow = getActiveLyricWindow(
     syncedLyricLines,
     currentTime + (currentSong?.lyricsOffsetSec ?? 0),
+  )
+  const visibleLyricLines = getVisibleLyricLines(
+    syncedLyricLines,
+    currentTime + (currentSong?.lyricsOffsetSec ?? 0),
+    5,
   )
   const hasSyncedLyrics = syncedLyricLines.length > 0
   const hasPlainLyrics = !hasSyncedLyrics && plainLyricLines.length > 0
@@ -272,34 +283,6 @@ export default function KaraokePlayer() {
                 },
               }}
             />
-            {(hasSyncedLyrics || hasPlainLyrics || currentSong.instrumental) && (
-              <div className="lyrics-overlay" aria-live="polite">
-                {hasSyncedLyrics && (
-                  <>
-                    <p className="lyric-line lyric-current">
-                      {lyricWindow.current?.text || '...'}
-                    </p>
-                    {lyricWindow.next?.text && (
-                      <p className="lyric-line lyric-next">{lyricWindow.next.text}</p>
-                    )}
-                    <div className="lyric-progress">
-                      <span style={{ width: `${lyricWindow.progress * 100}%` }} />
-                    </div>
-                  </>
-                )}
-                {hasPlainLyrics && (
-                  <>
-                    <p className="lyric-line lyric-current">{plainLyricLines[0]}</p>
-                    {plainLyricLines[1] && (
-                      <p className="lyric-line lyric-next">{plainLyricLines[1]}</p>
-                    )}
-                  </>
-                )}
-                {!hasSyncedLyrics && !hasPlainLyrics && currentSong.instrumental && (
-                  <p className="lyric-line lyric-current">Instrumental</p>
-                )}
-              </div>
-            )}
           </div>
         ) : (
           <div className="placeholder-screen">
@@ -311,6 +294,56 @@ export default function KaraokePlayer() {
           </div>
         )}
       </div>
+
+      {currentSong && (hasSyncedLyrics || hasPlainLyrics || currentSong.instrumental) && (
+        <section className="lyrics-panel" aria-label="Lyrics">
+          <div className="lyrics-panel-header">
+            <h3>Lyrics</h3>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm lyrics-toggle-btn"
+              onClick={() => setShowLyricsPanel((value) => !value)}
+            >
+              {showLyricsPanel ? 'Hide Lyrics' : 'Show Lyrics'}
+            </button>
+          </div>
+          {showLyricsPanel && (
+            <div className="lyrics-panel-body" aria-live="polite">
+              {hasSyncedLyrics && (
+                <>
+                  <div className="lyrics-panel-lines">
+                    {visibleLyricLines.map((line) => (
+                      <p
+                        key={line.id}
+                        className={`lyrics-panel-line ${line.isActive ? 'active' : ''}`}
+                      >
+                        {line.text || '\u00A0'}
+                      </p>
+                    ))}
+                  </div>
+                  <div className="lyric-progress">
+                    <span style={{ width: `${lyricWindow.progress * 100}%` }} />
+                  </div>
+                </>
+              )}
+              {hasPlainLyrics && (
+                <div className="lyrics-panel-lines">
+                  {plainLyricLines.slice(0, 6).map((line, index) => (
+                    <p key={`${line}-${index}`} className="lyrics-panel-line active">
+                      {line}
+                    </p>
+                  ))}
+                </div>
+              )}
+              {!hasSyncedLyrics && !hasPlainLyrics && currentSong.instrumental && (
+                <div className="lyrics-panel-lines">
+                  <p className="lyrics-panel-line active">Instrumental</p>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Custom Control Bar */}
       <div className="player-controls">

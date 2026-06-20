@@ -3,6 +3,7 @@ import { describe, it } from 'node:test'
 
 import {
   getActiveLyricWindow,
+  getVisibleLyricLines,
   parseSyncedLyrics,
 } from '../src/shared/lyrics.js'
 
@@ -46,5 +47,25 @@ describe('lyrics helpers', () => {
     assert.equal(getActiveLyricWindow(lines, 30).current.text, 'Last line')
     assert.equal(getActiveLyricWindow(lines, 30).next, null)
     assert.equal(getActiveLyricWindow(lines, 30).progress, 1)
+  })
+
+  it('returns a five-line lyric panel centered around the active timestamp', () => {
+    const lines = parseSyncedLyrics(`
+[00:01.00] One
+[00:02.00] Two
+[00:03.00] Three
+[00:04.00] Four
+[00:05.00] Five
+[00:06.00] Six
+[00:07.00] Seven
+`)
+
+    assert.deepEqual(getVisibleLyricLines(lines, 4.2), [
+      { id: '2-1', text: 'Two', timeSec: 2, isActive: false },
+      { id: '3-2', text: 'Three', timeSec: 3, isActive: false },
+      { id: '4-3', text: 'Four', timeSec: 4, isActive: true },
+      { id: '5-4', text: 'Five', timeSec: 5, isActive: false },
+      { id: '6-5', text: 'Six', timeSec: 6, isActive: false },
+    ])
   })
 })

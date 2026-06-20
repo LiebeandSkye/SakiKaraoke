@@ -79,6 +79,28 @@ export function getActiveLyricWindow(lines, currentTimeSec) {
   }
 }
 
+export function getVisibleLyricLines(lines, currentTimeSec, maxLines = 5) {
+  const lyricLines = Array.isArray(lines) ? lines : []
+  const lineCount = Math.max(1, Math.floor(toFiniteNumber(maxLines, 5)))
+
+  if (lyricLines.length === 0) return []
+
+  const { currentIndex } = getActiveLyricWindow(lyricLines, currentTimeSec)
+  const activeIndex = currentIndex >= 0 ? currentIndex : 0
+  const halfWindow = Math.floor(lineCount / 2)
+  const maxStart = Math.max(0, lyricLines.length - lineCount)
+  const startIndex = clamp(activeIndex - halfWindow, 0, maxStart)
+
+  return lyricLines
+    .slice(startIndex, startIndex + lineCount)
+    .map((line, offset) => ({
+      id: line.id,
+      text: line.text,
+      timeSec: line.timeSec,
+      isActive: startIndex + offset === currentIndex,
+    }))
+}
+
 export function splitPlainLyrics(value) {
   return String(value ?? '')
     .split(/\r?\n/)
