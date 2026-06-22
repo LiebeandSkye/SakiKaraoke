@@ -3,7 +3,7 @@
  * @param {string} query
  * @returns {Promise<Array>}
  */
-const BASE = import.meta.env.PROD ? '' : 'http://localhost:3001'
+const BASE = import.meta.env.VITE_BACKEND_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:3001')
 
 export async function searchSongs(query) {
   const res = await fetch(`${BASE}/api/search?q=${encodeURIComponent(query)}`)

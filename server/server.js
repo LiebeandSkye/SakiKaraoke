@@ -16,8 +16,9 @@ const __dirname = path.dirname(__filename)
 const app = express()
 const server = createServer(app)
 
-// Enable CORS for frontend Vite dev server (usually 5173, but we allow all origins for dev simplicity)
-app.use(cors())
+// Enable CORS for frontend
+const CORS_ORIGIN = env.FRONTEND_URL || '*'
+app.use(cors({ origin: CORS_ORIGIN }))
 app.use(express.json())
 
 // Serve static frontend files in production
@@ -72,7 +73,7 @@ app.use((req, res, next) => {
 
 const io = new Server(server, {
   cors: {
-    origin: '*',
+    origin: CORS_ORIGIN,
     methods: ['GET', 'POST'],
   },
 })
