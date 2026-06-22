@@ -35,7 +35,6 @@
   position: absolute;
   inset: 0;
   backdrop-filter: var(--glass-blur);
-  filter: url(#glass-distortion);
   z-index: -1;
   pointer-events: none;
 }
@@ -136,7 +135,10 @@
   text-align: center;
   position: relative;
   overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   isolation: isolate;
   contain: layout style;
 }
@@ -217,7 +219,10 @@
   color: var(--text-primary);
   font-size: 0.95rem;
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(255, 255, 255, 0.03);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   backdrop-filter: blur(10px);
 }
 
@@ -245,7 +250,12 @@
   font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   text-align: center;
   letter-spacing: -0.2px;
   display: inline-flex;
@@ -255,7 +265,6 @@
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.15);
-  will-change: transform, background-color, border-color, box-shadow;
 }
 
 .btn::before {
@@ -264,7 +273,6 @@
   inset: 0;
   border-radius: inherit;
   backdrop-filter: blur(8px);
-  filter: url(#glass-distortion);
   z-index: -1;
   pointer-events: none;
 }
@@ -445,7 +453,10 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
@@ -499,9 +510,11 @@
   border-radius: 10px;
   gap: 12px;
   font-size: 0.9rem;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  will-change: transform, background-color, border-color;
 }
 
 .singer-row:hover {
@@ -737,9 +750,11 @@
   border: 1px solid rgba(255, 255, 255, 0.05);
   padding: 8px 12px;
   border-radius: 10px;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  will-change: transform, background-color, border-color;
 }
 
 
@@ -1135,9 +1150,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 2px 6px rgba(0, 0, 0, 0.15);
-  will-change: transform, background-color, border-color;
 }
 
 .control-btn:hover:not(.disabled) {
@@ -1163,8 +1182,12 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3),
               inset 1px 1px 1px rgba(255, 255, 255, 0.4),
               inset -1px -1px 1px rgba(255, 255, 255, 0.1);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: transform, background-color, border-color, box-shadow;
+  transition:
+    background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .play-pause-btn::before {
@@ -1173,7 +1196,6 @@
   inset: 0;
   border-radius: inherit;
   backdrop-filter: var(--glass-blur);
-  filter: url(#glass-distortion);
   z-index: -1;
   pointer-events: none;
 }
@@ -1404,7 +1426,6 @@
   inset: 0;
   border-radius: inherit;
   backdrop-filter: var(--glass-blur);
-  filter: url(#glass-distortion);
   z-index: -1;
   pointer-events: none;
 }
@@ -1434,7 +1455,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   line-height: 1;
   padding: 0;
@@ -1554,7 +1580,6 @@
   inset: 0;
   border-radius: inherit;
   backdrop-filter: var(--glass-blur);
-  filter: url(#glass-distortion);
   z-index: -1;
   pointer-events: none;
 }
@@ -1613,7 +1638,6 @@
   inset: 0;
   border-radius: inherit;
   backdrop-filter: var(--glass-blur);
-  filter: url(#glass-distortion);
   z-index: -1;
   pointer-events: none;
 }
@@ -1665,7 +1689,10 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   isolation: isolate;
   contain: layout style;
 }
@@ -1676,7 +1703,6 @@
   inset: 0;
   border-radius: inherit;
   backdrop-filter: var(--glass-blur);
-  filter: url(#glass-distortion);
   z-index: -1;
   pointer-events: none;
 }
@@ -1709,7 +1735,10 @@
   color: var(--text-primary);
   font-size: 0.95rem;
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(255, 255, 255, 0.03);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   backdrop-filter: blur(10px);
 }
 
@@ -1748,7 +1777,10 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   isolation: isolate;
   contain: style;
 }
@@ -1759,7 +1791,6 @@
   inset: 0;
   border-radius: inherit;
   backdrop-filter: var(--glass-blur);
-  filter: url(#glass-distortion);
   z-index: -1;
   pointer-events: none;
 }
@@ -1799,7 +1830,10 @@
   font-size: 0.85rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .search-tab:hover {
@@ -1835,7 +1869,10 @@
   color: var(--text-primary);
   font-size: 0.95rem;
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(255, 255, 255, 0.03);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   backdrop-filter: blur(10px);
 }
 
@@ -1874,7 +1911,10 @@
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.02);
   cursor: default;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
@@ -2085,7 +2125,6 @@
   inset: 0;
   border-radius: inherit;
   backdrop-filter: var(--glass-blur);
-  filter: url(#glass-distortion);
   z-index: -1;
   pointer-events: none;
 }
@@ -2146,7 +2185,10 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    color 0.2s;
   flex-shrink: 0;
 }
 

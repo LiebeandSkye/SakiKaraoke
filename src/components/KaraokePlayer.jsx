@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import ReactPlayer from 'react-player'
 import { useRoom } from '../context/RoomContext.jsx'
@@ -49,6 +49,7 @@ export default function KaraokePlayer() {
 
   const isHost = user?.isHost
   const currentSong = room?.currentSong
+  const lyricsOffsetSec = currentSong?.lyricsOffsetSec ?? 0
   const syncedLyricLines = useMemo(
     () => parseSyncedLyrics(currentSong?.syncedLyrics),
     [currentSong?.syncedLyrics],
@@ -57,17 +58,43 @@ export default function KaraokePlayer() {
     () => splitPlainLyrics(currentSong?.plainLyrics),
     [currentSong?.plainLyrics],
   )
-  const lyricWindow = getActiveLyricWindow(
-    syncedLyricLines,
-    currentTime + (currentSong?.lyricsOffsetSec ?? 0),
+  const lyricTime = useMemo(
+    () => currentTime + lyricsOffsetSec,
+    [currentTime, lyricsOffsetSec],
   )
-  const visibleLyricLines = getVisibleLyricLines(
-    syncedLyricLines,
-    currentTime + (currentSong?.lyricsOffsetSec ?? 0),
-    5,
+  const lyricWindow = useMemo(
+    () => getActiveLyricWindow(syncedLyricLines, lyricTime),
+    [syncedLyricLines, lyricTime],
+  )
+  const visibleLyricLines = useMemo(
+    () => getVisibleLyricLines(syncedLyricLines, lyricTime, 5),
+    [syncedLyricLines, lyricTime],
   )
   const hasSyncedLyrics = syncedLyricLines.length > 0
   const hasPlainLyrics = !hasSyncedLyrics && plainLyricLines.length > 0
+  const usersMap = useMemo(
+    () => new Map((room?.users ?? []).map((u) => [u.id, u])),
+    [room?.users],
+  )
+  const singer = usersMap.get(room?.currentSingerId)
+
+  const formatTime = useCallback((seconds) => {
+    const m = Math.floor(seconds / 60)
+    const s = Math.floor(seconds % 60)
+    return `${m}:${s.toString().padStart(2, '0')}`
+  }, [])
+
+  const getSliderFill = useCallback((
+    value,
+    min,
+    max,
+    fillColor = 'rgba(255,255,255,0.65)',
+  ) => {
+    const pct = max > 0 ? ((value - min) / (max - min)) * 100 : 0
+    return {
+      background: `linear-gradient(to right, ${fillColor} 0%, ${fillColor} ${pct}%, rgba(255,255,255,0.08) ${pct}%, rgba(255,255,255,0.08) 100%)`,
+    }
+  }, [])
 
   // Reset segment triggers when current song changes
   useEffect(() => {
@@ -93,21 +120,6 @@ export default function KaraokePlayer() {
 
 
   if (!room) return null
-
-  // Helpers to format seconds
-  const formatTime = (seconds) => {
-    const m = Math.floor(seconds / 60)
-    const s = Math.floor(seconds % 60)
-    return `${m}:${s.toString().padStart(2, '0')}`
-  }
-
-  // Compute slider fill background for visual progress track
-  const getSliderFill = (value, min, max, fillColor = 'rgba(255,255,255,0.65)') => {
-    const pct = max > 0 ? ((value - min) / (max - min)) * 100 : 0
-    return {
-      background: `linear-gradient(to right, ${fillColor} 0%, ${fillColor} ${pct}%, rgba(255,255,255,0.08) ${pct}%, rgba(255,255,255,0.08) 100%)`,
-    }
-  }
   // Host Control Handlers
   const handlePlayPause = () => {
     if (!isHost) return
@@ -175,15 +187,10 @@ export default function KaraokePlayer() {
     }
   }
 
-  const lyricsOffsetSec = currentSong?.lyricsOffsetSec ?? 0
-
   const adjustLyricsOffset = (deltaSec) => {
     if (!isHost || !currentSong) return
     setLyricsOffset(lyricsOffsetSec + deltaSec)
   }
-
-  const usersMap = new Map(room.users.map((u) => [u.id, u]))
-  const singer = usersMap.get(room.currentSingerId)
 
   return (
     <div className="karaoke-player-container">

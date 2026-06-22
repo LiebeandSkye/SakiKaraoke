@@ -92,7 +92,10 @@ body {
   border: 1px solid var(--glass-border);
   border-radius: 24px;
   box-shadow: var(--glass-shadow);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .liquid-glass-panel::before {
@@ -101,7 +104,6 @@ body {
   inset: 0;
   border-radius: inherit;
   backdrop-filter: var(--glass-blur);
-  filter: url(#glass-distortion);
   z-index: -1;
   pointer-events: none;
 }
@@ -133,7 +135,7 @@ body {
 .bg-blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(130px);
+  filter: blur(72px);
   opacity: 0.35;
   will-change: transform;
   transform: translateZ(0);
