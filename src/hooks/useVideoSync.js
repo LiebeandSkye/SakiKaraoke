@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { socket } from '../api/socket.js'
 import { readMediaTime, seekMediaTo } from '../shared/mediaElement.js'
-import { getRemoteTargetTime } from '../shared/playbackSync.js'
+import { getRemoteTargetTime, SYNC_PING_INTERVAL_MS } from '../shared/playbackSync.js'
 
 export function useVideoSync({
   playerRef,
@@ -99,7 +99,7 @@ export function useVideoSync({
           }
         )
       }
-    }, 5000) // 5 seconds check interval
+    }, SYNC_PING_INTERVAL_MS)
 
     return () => clearInterval(interval)
   }, [roomCode, playerRef, setIsPlaying])

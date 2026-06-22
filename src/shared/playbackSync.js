@@ -1,5 +1,6 @@
-export const DEFAULT_DRIFT_THRESHOLD_SEC = 1
+export const DEFAULT_DRIFT_THRESHOLD_SEC = 0.3
 export const DEFAULT_CONTROL_DELAY_MS = 250
+export const SYNC_PING_INTERVAL_MS = 2000
 
 function toFiniteNumber(value, fallback = 0) {
   const number = Number(value)

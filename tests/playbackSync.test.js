@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
 import {
+  DEFAULT_DRIFT_THRESHOLD_SEC,
+  SYNC_PING_INTERVAL_MS,
   expectedPlaybackTime,
   getDriftCorrection,
   getRemoteTargetTime,
@@ -28,6 +30,19 @@ describe('playback sync helpers', () => {
     assert.deepEqual(
       getDriftCorrection({ expectedTimeSec: 12, localTimeSec: 11.1, thresholdSec: 1 }),
       { shouldCorrect: false, targetTimeSec: 12, driftSec: 0.9 },
+    )
+  })
+
+  it('uses karaoke-tight defaults for drift correction and ping cadence', () => {
+    assert.equal(DEFAULT_DRIFT_THRESHOLD_SEC, 0.3)
+    assert.equal(SYNC_PING_INTERVAL_MS, 2000)
+    assert.deepEqual(
+      getDriftCorrection({ expectedTimeSec: 12, localTimeSec: 11.65 }),
+      { shouldCorrect: true, targetTimeSec: 12, driftSec: 0.35 },
+    )
+    assert.deepEqual(
+      getDriftCorrection({ expectedTimeSec: 12, localTimeSec: 11.75 }),
+      { shouldCorrect: false, targetTimeSec: 12, driftSec: 0.25 },
     )
   })
 

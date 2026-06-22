@@ -239,7 +239,16 @@ export async function searchYoutube(query) {
 
   if (apiKey) {
     try {
-      const apiUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=1&key=${apiKey}`
+      const apiUrl = new URL('https://www.googleapis.com/youtube/v3/search')
+      apiUrl.search = new URLSearchParams({
+        part: 'snippet',
+        q: query,
+        type: 'video',
+        maxResults: '1',
+        videoEmbeddable: 'true',
+        videoSyndicated: 'true',
+        key: apiKey,
+      })
       const response = await fetch(apiUrl)
       if (response.ok) {
         const data = await response.json()
@@ -247,8 +256,10 @@ export async function searchYoutube(query) {
         if (parsed) return parsed
       }
     } catch (err) {
-      console.error('YouTube API search failed, trying scrape fallback:', err.message)
+      console.error('YouTube API search failed:', err.message)
     }
+
+    return null
   }
 
   try {

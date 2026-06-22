@@ -192,7 +192,9 @@ describe('room store', () => {
 
     assert.equal(sync.ok, true)
     assert.equal(sync.expectedTimeSec, 22)
-    assert.equal(sync.correction.shouldCorrect, false)
+    assert.equal(sync.correction.shouldCorrect, true)
+    assert.equal(sync.correction.targetTimeSec, 22)
+    assert.equal(sync.correction.driftSec, 1)
   })
 
   it('advances singer rotation based on room mode', () => {
