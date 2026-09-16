@@ -51,11 +51,16 @@ export default function SongSearch() {
   useEffect(() => {
     if (viewingLyrics) {
       document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
-    return () => {
-      document.body.style.overflow = ''
+      const handleKeyDown = (e) => {
+        if (e.key === 'Escape') {
+          setViewingLyrics(null)
+        }
+      }
+      window.addEventListener('keydown', handleKeyDown)
+      return () => {
+        document.body.style.overflow = ''
+        window.removeEventListener('keydown', handleKeyDown)
+      }
     }
   }, [viewingLyrics])
 
@@ -96,9 +101,11 @@ export default function SongSearch() {
 
   return (
     <div className="song-search-container">
-      <div className="search-tabs">
+      <div className="search-tabs" role="tablist" aria-label="Song addition method">
         <button
           type="button"
+          role="tab"
+          aria-selected={activeTab === TABS.SEARCH}
           className={`search-tab ${activeTab === TABS.SEARCH ? 'active' : ''}`}
           onClick={() => setActiveTab(TABS.SEARCH)}
         >
@@ -106,6 +113,8 @@ export default function SongSearch() {
         </button>
         <button
           type="button"
+          role="tab"
+          aria-selected={activeTab === TABS.URL}
           className={`search-tab ${activeTab === TABS.URL ? 'active' : ''}`}
           onClick={() => setActiveTab(TABS.URL)}
         >
@@ -234,6 +243,7 @@ export default function SongSearch() {
                 type="button"
                 className="lyrics-modal-close"
                 onClick={() => setViewingLyrics(null)}
+                aria-label="Close lyrics preview"
               >
                 ✕
               </button>

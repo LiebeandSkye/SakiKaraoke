@@ -23,6 +23,12 @@ import {
 
 export default function KaraokePlayer() {
   const { room, user, controlPlayback, playNext, advanceRotation, setLyricsOffset } = useRoom()
+  const isHost = user?.isHost
+  const currentSong = room?.currentSong
+  const lyricsOffsetSec = currentSong?.lyricsOffsetSec ?? 0
+  const syncedLyrics = currentSong?.syncedLyrics
+  const plainLyrics = currentSong?.plainLyrics
+
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -31,6 +37,9 @@ export default function KaraokePlayer() {
   const [muted, setMuted] = useState(false)
   const [showFullLyrics, setShowFullLyrics] = useState(false)
   const [showLyricsPanel, setShowLyricsPanel] = useState(true)
+
+  const playerRef = useRef(null)
+  const triggeredSegmentsRef = useRef(new Set())
 
   // Lock body scroll when fullscreen lyrics modal is open
   useEffect(() => {
@@ -44,19 +53,37 @@ export default function KaraokePlayer() {
     }
   }, [showFullLyrics])
 
-  const playerRef = useRef(null)
-  const triggeredSegmentsRef = useRef(new Set())
-
-  const isHost = user?.isHost
-  const currentSong = room?.currentSong
-  const lyricsOffsetSec = currentSong?.lyricsOffsetSec ?? 0
+  // Apple HIG Keyboard Accessibility: Spacebar for Play/Pause, Escape for Modals
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.code === 'Space') {
+        const target = e.target
+        const isInput =
+          target?.tagName === 'INPUT' ||
+          target?.tagName === 'TEXTAREA' ||
+          target?.tagName === 'SELECT' ||
+          target?.isContentEditable
+        if (!isInput && isHost && currentSong) {
+          e.preventDefault()
+          const nextPlaying = !isPlaying
+          setIsPlaying(nextPlaying)
+          controlPlayback(nextPlaying ? 'play' : 'pause', currentTime, nextPlaying)
+        }
+      } else if (e.key === 'Escape' && showFullLyrics) {
+        e.preventDefault()
+        setShowFullLyrics(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isHost, currentSong, isPlaying, currentTime, controlPlayback, showFullLyrics])
   const syncedLyricLines = useMemo(
-    () => parseSyncedLyrics(currentSong?.syncedLyrics),
-    [currentSong?.syncedLyrics],
+    () => parseSyncedLyrics(syncedLyrics),
+    [syncedLyrics],
   )
   const plainLyricLines = useMemo(
-    () => splitPlainLyrics(currentSong?.plainLyrics),
-    [currentSong?.plainLyrics],
+    () => splitPlainLyrics(plainLyrics),
+    [plainLyrics],
   )
   const lyricTime = useMemo(
     () => currentTime + lyricsOffsetSec,
@@ -361,20 +388,22 @@ export default function KaraokePlayer() {
             className={`control-btn play-pause-btn ${!isHost ? 'disabled' : ''}`}
             onClick={handlePlayPause}
             disabled={!isHost}
-            title={isHost ? (isPlaying ? 'Pause' : 'Play') : 'Only host can control playback'}
+            aria-label={isHost ? (isPlaying ? 'Pause' : 'Play') : 'Playback controlled by host'}
+            title={isHost ? (isPlaying ? 'Pause (Space)' : 'Play (Space)') : 'Only host can control playback'}
           >
             {isPlaying ? <IoPauseSharp /> : <IoPlaySharp />}
           </button>
 
           {/* Progress Slider */}
           <div className="progress-slider-container">
-            <span className="time-display">{formatTime(currentTime)}</span>
+            <span className="time-display tabular-nums">{formatTime(currentTime)}</span>
             <input
               type="range"
               min={0}
               max={duration || 100}
               step="any"
               value={currentTime}
+              aria-label="Playback scrubber"
               onMouseDown={handleSeekMouseDown}
               onChange={handleSeekChange}
               onMouseUp={handleSeekMouseUp}
@@ -382,7 +411,7 @@ export default function KaraokePlayer() {
               className={`timeline-slider ${!isHost ? 'guest-timeline' : ''}`}
               style={getSliderFill(currentTime, 0, duration || 100, 'rgba(255,255,255,0.7)')}
             />
-            <span className="time-display">{formatTime(duration)}</span>
+            <span className="time-display tabular-nums">{formatTime(duration)}</span>
           </div>
         </div>
 
@@ -393,6 +422,7 @@ export default function KaraokePlayer() {
               type="button"
               className="control-btn volume-btn"
               onClick={() => setMuted(!muted)}
+              aria-label={muted || volume === 0 ? 'Unmute' : 'Mute'}
             >
               {muted || volume === 0 ? (
                 <IoVolumeMuteSharp />
@@ -408,6 +438,7 @@ export default function KaraokePlayer() {
               max={1}
               step="any"
               value={muted ? 0 : volume}
+              aria-label="Volume level"
               onChange={(e) => {
                 setVolume(parseFloat(e.target.value))
                 setMuted(false)

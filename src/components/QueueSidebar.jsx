@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useRoom } from '../context/RoomContext.jsx'
 import { IoMicSharp, IoDiscSharp, IoListSharp, IoPlayForwardSharp, IoCheckmarkSharp } from 'react-icons/io5'
@@ -7,6 +7,18 @@ export default function QueueSidebar() {
   const { room, user, playNext, changeRotationMode, advanceRotation, leaveRoom } = useRoom()
   const [showCopyNotification, setShowCopyNotification] = useState(false)
   const [showLeaveConfirmation, setShowLeaveConfirmation] = useState(false)
+
+  // Apple HIG: Escape key to dismiss confirmation modal
+  useEffect(() => {
+    if (!showLeaveConfirmation) return
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowLeaveConfirmation(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [showLeaveConfirmation])
 
   if (!room) return null
 
@@ -47,7 +59,7 @@ export default function QueueSidebar() {
     <aside className="queue-column">
       {/* Copy Notification */}
       {showCopyNotification && createPortal(
-        <div className="copy-notification liquid-glass-notification">
+        <div className="copy-notification">
           <IoCheckmarkSharp className="notification-icon" />
           <span>Room code copied!</span>
         </div>,
@@ -82,10 +94,10 @@ export default function QueueSidebar() {
       )}
 
       {/* Room Header Info */}
-      <div className="queue-card room-info-card liquid-glass-panel">
-        <div className="room-code-badge" onClick={handleCopyCode} title="Click to copy">
+      <div className="queue-card room-info-card">
+        <div className="room-code-badge" onClick={handleCopyCode} title="Click to copy" role="button" tabIndex={0}>
           <span className="label">ROOM CODE</span>
-          <span className="code">{room.code}</span>
+          <span className="code tabular-nums">{room.code}</span>
         </div>
         <button type="button" className="btn btn-danger btn-leave" onClick={handleLeaveRoom}>
           Leave Room
@@ -93,7 +105,7 @@ export default function QueueSidebar() {
       </div>
 
       {/* Singer Rotation & Users List */}
-      <div className="queue-card rotation-card liquid-glass-panel">
+      <div className="queue-card rotation-card">
         <h3><IoMicSharp className="sidebar-icon" /> Singer Rotation</h3>
         <div className="singers-list">
           {room.rotation.singerIds.map((id, index) => {
@@ -105,7 +117,7 @@ export default function QueueSidebar() {
                 key={id}
                 className={`singer-row ${isCurrentSinging ? 'active-singer' : ''}`}
               >
-                <span className="singer-order">#{index + 1}</span>
+                <span className="singer-order tabular-nums">#{index + 1}</span>
                 <span className="singer-name">
                   {u.displayName} {u.isHost && <span className="host-badge">Host</span>}
                 </span>
@@ -151,7 +163,7 @@ export default function QueueSidebar() {
       </div>
 
       {/* Now Playing */}
-      <div className="queue-card now-playing-card liquid-glass-panel">
+      <div className="queue-card now-playing-card">
         <h3><IoDiscSharp className="sidebar-icon" /> Now Playing</h3>
         {room.currentSong ? (
           <div className="now-playing-card-content">
@@ -189,7 +201,7 @@ export default function QueueSidebar() {
       </div>
 
       {/* Upcoming Queue */}
-      <div className="queue-card queue-list-card liquid-glass-panel">
+      <div className="queue-card queue-list-card">
         <h3><IoListSharp className="sidebar-icon" /> Upcoming Queue ({room.queue.length})</h3>
         <div className="queue-list">
           {room.queue.length > 0 ? (
