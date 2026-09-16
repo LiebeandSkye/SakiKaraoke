@@ -109,20 +109,65 @@
 }
 
 /* --------------------------------------------------------------------------
-   Room Lobby
+   Room Lobby (Cinematic Background for Create/Join Screen ONLY)
    -------------------------------------------------------------------------- */
 .lobby-container {
+  position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: calc(100vh - 65px);
+  min-height: 100vh;
   padding: 24px;
+  overflow: hidden;
+  background: #000000;
+}
+
+.lobby-bg-wrapper {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.lobby-bg-image {
+  position: absolute;
+  inset: -28px;
+  background-image: url('/karaokebg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  transform: translate3d(0, 0, 0);
+}
+
+/* Clear central core with subtle soft focus */
+.lobby-bg-clear {
+  filter: brightness(0.68) contrast(1.05) blur(2.5px);
+}
+
+/* Atmospheric outer border blur with smooth radial gradient mask */
+.lobby-bg-blur {
+  filter: brightness(0.52) contrast(1.08) blur(24px);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(0, 0, 0, 0) 25%, rgba(0, 0, 0, 0.5) 55%, rgba(0, 0, 0, 1) 90%);
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(0, 0, 0, 0) 95%, rgba(0, 0, 0, 0.5) 95%, rgba(0, 0, 0, 1) 90%);
+}
+
+/* Cinematic movie vignette falloff */
+.lobby-bg-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.2) 20%, rgba(0, 0, 0, 0.6) 65%, rgba(0, 0, 0, 0.92) 100%);
+  mix-blend-mode: multiply;
 }
 
 .lobby-card {
-  background: var(--bg-grouped);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--shadow-lg);
+  position: relative;
+  z-index: 1;
+  background: rgba(28, 28, 30, 0.82);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7), 0 1px 0 rgba(255, 255, 255, 0.15) inset;
   border-radius: 20px;
   padding: 44px 36px;
   width: 100%;

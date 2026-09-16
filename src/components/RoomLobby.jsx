@@ -26,6 +26,12 @@ export default function RoomLobby() {
 
   return (
     <div className="lobby-container">
+      <div className="lobby-bg-wrapper" aria-hidden="true">
+        <div className="lobby-bg-image lobby-bg-clear" />
+        <div className="lobby-bg-image lobby-bg-blur" />
+        <div className="lobby-bg-vignette" />
+      </div>
+
       <div className="lobby-card">
         <h1 className="lobby-title">
           <IoMicSharp className="lobby-title-icon" /> SakiKaraoke
