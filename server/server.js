@@ -369,6 +369,101 @@ io.on('connection', (socket) => {
     }
   })
 
+  // Bartender role (only one player at a time)
+  socket.on('claim-bartender', ({ roomCode }, callback) => {
+    try {
+      const result = store.claimBartender({ roomCode, socketId: socket.id })
+      if (result.ok) {
+        io.to(result.room.code).emit('room-update', result.room)
+        callback?.({ ok: true, room: result.room })
+      } else {
+        callback?.({ ok: false, error: result.error })
+      }
+    } catch (err) {
+      callback?.({ ok: false, error: err.message })
+    }
+  })
+
+  socket.on('release-bartender', ({ roomCode }, callback) => {
+    try {
+      const result = store.releaseBartender({ roomCode, socketId: socket.id })
+      if (result.ok) {
+        io.to(result.room.code).emit('room-update', result.room)
+        callback?.({ ok: true, room: result.room })
+      } else {
+        callback?.({ ok: false, error: result.error })
+      }
+    } catch (err) {
+      callback?.({ ok: false, error: err.message })
+    }
+  })
+
+  // Seats (sofas & bar stools)
+  socket.on('sit-seat', ({ roomCode, seatId }, callback) => {
+    try {
+      const result = store.sitOnSeat({ roomCode, socketId: socket.id, seatId })
+      if (result.ok) {
+        io.to(result.room.code).emit('room-update', result.room)
+        callback?.({ ok: true, seatId: result.seatId, room: result.room })
+      } else {
+        callback?.({ ok: false, error: result.error })
+      }
+    } catch (err) {
+      callback?.({ ok: false, error: err.message })
+    }
+  })
+
+  socket.on('stand-seat', ({ roomCode }, callback) => {
+    try {
+      const result = store.standFromSeat({ roomCode, socketId: socket.id })
+      if (result.ok) {
+        io.to(result.room.code).emit('room-update', result.room)
+        callback?.({ ok: true, room: result.room })
+      } else {
+        callback?.({ ok: false, error: result.error })
+      }
+    } catch (err) {
+      callback?.({ ok: false, error: err.message })
+    }
+  })
+
+  // Place & take drinks on bar counter or coffee tables
+  socket.on('place-drink', ({ roomCode, drinkKey, quality, sips, slotId, preferredSurface }, callback) => {
+    try {
+      const result = store.placeDrink({
+        roomCode,
+        socketId: socket.id,
+        drinkKey,
+        quality,
+        sips,
+        slotId,
+        preferredSurface,
+      })
+      if (result.ok) {
+        io.to(result.room.code).emit('room-update', result.room)
+        callback?.({ ok: true, drink: result.drink, room: result.room })
+      } else {
+        callback?.({ ok: false, error: result.error })
+      }
+    } catch (err) {
+      callback?.({ ok: false, error: err.message })
+    }
+  })
+
+  socket.on('take-drink', ({ roomCode, drinkId }, callback) => {
+    try {
+      const result = store.takeDrink({ roomCode, socketId: socket.id, drinkId })
+      if (result.ok) {
+        io.to(result.room.code).emit('room-update', result.room)
+        callback?.({ ok: true, drink: result.drink, room: result.room })
+      } else {
+        callback?.({ ok: false, error: result.error })
+      }
+    } catch (err) {
+      callback?.({ ok: false, error: err.message })
+    }
+  })
+
   // Avatar pose relay for the 3D room. Volatile (drop stale frames instead of queueing) and
   // rate-limited so a slow client can never build latency for everyone else.
   socket.on('player-pose', (pose) => {
@@ -376,7 +471,7 @@ io.on('connection', (socket) => {
     if (typeof code !== 'string' || !socket.rooms.has(code)) return
     const now = Date.now()
     if (now - (socket.data.lastPoseAt || 0) < 30) return
-    const { x, y, z, ry, s, a } = pose
+    const { x, y, z, ry, s, a, seatId, drink, sip, bt } = pose
     if (![x, y, z, ry, s].every(Number.isFinite)) return
     socket.data.lastPoseAt = now
     socket.to(code).volatile.emit('player-pose', {
@@ -387,6 +482,10 @@ io.on('connection', (socket) => {
       ry,
       s: Math.max(0, Math.min(8, s)),
       a: a ? 1 : 0,
+      seatId: typeof seatId === 'string' ? seatId.slice(0, 24) : null,
+      drink: typeof drink === 'string' ? drink.slice(0, 24) : null,
+      sip: sip ? 1 : 0,
+      bt: bt ? 1 : 0,
     })
   })
 

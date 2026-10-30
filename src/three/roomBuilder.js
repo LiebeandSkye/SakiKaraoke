@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { ROOM } from '../shared/roomPhysics.js'
+import { TABLE_SLOTS, TABLE_SLOT_MAP } from '../shared/barSystem.js'
 
 /**
  * Procedural karaoke lounge. Real-world scale (metres): 10 x 8 x 3.2 room.
@@ -538,46 +539,86 @@ export function createKaraokeRoom() {
   }
   coffeeTable(1.0, 2.05, 1.6, 0.75)
   coffeeTable(3.05, -0.4, 0.75, 1.5)
-  const glassOn = (mat, x, z, y = 0.425) => batch.cyl(mat, 0.035, 0.03, 0.1, x, y + 0.05, z, 10)
-  glassOn(M.glassAmber, 0.6, 2.0)
-  glassOn(M.glassClear, 1.2, 2.15)
-  glassOn(M.glassGreen, 1.5, 1.95)
-  batch.cyl(M.cream, 0.12, 0.08, 0.06, 1.0, 0.455, 2.05, 16)
-  batch.box(M.black, 0.16, 0.025, 0.05, 0.85, 0.44, 1.85)
-  glassOn(M.glassAmber, 3.05, -0.1)
-  glassOn(M.glassClear, 3.0, -0.8)
+  // Centerpiece bowl + remote on main coffee table (leaving coaster spots free for player drinks)
+  batch.cyl(M.cream, 0.11, 0.075, 0.055, 1.0, 0.452, 2.05, 16)
+  batch.box(M.black, 0.14, 0.022, 0.045, 0.7, 0.438, 2.04)
 
-  // --- Bar (left wall) ---
-  batch.box(M.walnut, 0.7, 1.0, 4.0, -3.7, 0.5, -0.6)
-  batch.box(M.walnutDark, 0.02, 0.7, 3.7, -3.34, 0.55, -0.6)
-  batch.box(M.oak, 0.86, 0.06, 4.15, -3.62, 1.03, -0.6)
-  batch.cyl(M.brass, 0.022, 0.022, 4.0, -3.22, 0.22, -0.6, 8, Math.PI / 2)
-  batch.box(M.tealLed, 0.02, 0.025, 3.7, -3.34, 0.07, -0.6)
-  solid(-4.1, -3.2, -2.7, 1.5, 1.06)
+  // --- Upgraded Juice Bar (left wall) ---
+  // Front bar counter shifted slightly right so the bartender walkway (-4.72 to -3.82) is comfortable
+  batch.box(M.walnut, 0.66, 1.0, 4.0, -3.48, 0.5, -0.6)
+  batch.box(M.walnutDark, 0.02, 0.7, 3.7, -3.14, 0.55, -0.6)
+  batch.box(M.oak, 0.84, 0.06, 4.15, -3.44, 1.03, -0.6)
+  batch.cyl(M.brass, 0.022, 0.022, 4.0, -3.02, 0.22, -0.6, 8, Math.PI / 2)
+  batch.box(M.tealLed, 0.02, 0.025, 3.7, -3.14, 0.07, -0.6)
+  solid(-3.82, -3.05, -2.68, 1.48, 1.06)
+
+  // Bartender station floor mat behind the bar
+  batch.box(M.charcoal, 0.55, 0.014, 1.4, -4.22, 0.007, -0.6)
+  batch.box(M.tealLed, 0.58, 0.008, 1.44, -4.22, 0.004, -0.6)
+
+  // Juice Bar prep station on counter: Blender, Cocktail Shaker, Fruit Bowl, Juice Dispensers
+  // 1) High-speed Blender at (-3.62, 1.06, -0.85)
+  batch.box(M.charcoal, 0.18, 0.12, 0.18, -3.62, 1.12, -0.85)
+  batch.cyl(M.steel, 0.06, 0.07, 0.03, -3.62, 1.19, -0.85, 12)
+  batch.cyl(M.glassClear, 0.075, 0.06, 0.22, -3.62, 1.31, -0.85, 12)
+  batch.cyl(M.coralLed, 0.065, 0.052, 0.14, -3.62, 1.28, -0.85, 10)
+  batch.cyl(M.black, 0.08, 0.078, 0.03, -3.62, 1.43, -0.85, 12)
+
+  // 2) Stainless Cocktail Shaker & Jigger on bar mat at (-3.58, 1.06, -0.45)
+  batch.box(M.charcoal, 0.26, 0.01, 0.52, -3.55, 1.065, -0.45)
+  batch.cyl(M.steel, 0.042, 0.032, 0.16, -3.58, 1.15, -0.42, 12)
+  batch.cyl(M.steel, 0.028, 0.04, 0.06, -3.58, 1.25, -0.42, 12)
+  batch.cyl(M.brass, 0.022, 0.015, 0.07, -3.56, 1.105, -0.58, 10)
+
+  // 3) Fresh Fruit Basket at (-3.6, 1.06, 0.15)
+  batch.box(M.walnutDark, 0.24, 0.07, 0.38, -3.6, 1.095, 0.15)
+  batch.sphere(M.amberLed, 0.042, -3.62, 1.14, 0.05, 1, 1, 1, 1)
+  batch.sphere(M.coralLed, 0.038, -3.56, 1.14, 0.14, 1, 1, 1, 1)
+  batch.sphere(M.leaf2, 0.038, -3.63, 1.14, 0.22, 1, 1, 1, 1)
+  batch.sphere(M.mustard, 0.044, -3.57, 1.15, 0.27, 1, 1, 1, 1)
+
+  // 4) Three glowing Juice Dispenser Towers on the back counter (-4.82, 0.92, z)
+  ;[
+    [-1.35, M.tealLed],
+    [-0.6, M.coralLed],
+    [0.15, M.amberLed],
+  ].forEach(([jz, jMat]) => {
+    batch.box(M.charcoal, 0.2, 0.1, 0.2, -HW + 0.18, 0.95, jz)
+    batch.cyl(M.glassClear, 0.085, 0.085, 0.26, -HW + 0.18, 1.13, jz, 14)
+    batch.cyl(jMat, 0.076, 0.076, 0.21, -HW + 0.18, 1.11, jz, 12)
+    batch.cyl(M.brass, 0.09, 0.09, 0.025, -HW + 0.18, 1.27, jz, 14)
+  })
+
+  // Brass serving coasters on bar counter and coffee tables for drink placement
+  TABLE_SLOTS.forEach((slot) => {
+    batch.cyl(M.brass, 0.068, 0.068, 0.006, slot.x, slot.y + 0.003, slot.z, 16)
+    batch.cyl(M.charcoal, 0.056, 0.056, 0.007, slot.x, slot.y + 0.004, slot.z, 16)
+  })
+
   // Back bar shelves + mirror + bottles
   batch.box(M.mirror, 0.02, 1.35, 3.8, -HW + 0.02, 1.65, -0.6)
-  batch.box(M.walnutDark, 0.3, 0.9, 3.9, -HW + 0.17, 0.45, -0.6)
-  solid(-HW, -HW + 0.34, -2.6, 1.4, 0.92)
+  batch.box(M.walnutDark, 0.26, 0.9, 3.9, -HW + 0.15, 0.45, -0.6)
+  solid(-HW, -HW + 0.28, -2.6, 1.4, 0.92)
   const bottleMats = [M.glassAmber, M.glassGreen, M.glassClear, M.glassAmber]
-  ;[1.25, 1.7, 2.15].forEach((y, row) => {
-    batch.box(M.oak, 0.26, 0.035, 3.7, -HW + 0.17, y, -0.6)
+  ;[1.42, 1.82, 2.22].forEach((y, row) => {
+    batch.box(M.oak, 0.24, 0.035, 3.7, -HW + 0.15, y, -0.6)
     batch.box(M.amberLed, 0.02, 0.02, 3.6, -HW + 0.05, y - 0.03, -0.6)
     for (let i = 0; i < 14; i += 1) {
       const z = -2.3 + i * 0.26 + (row % 2) * 0.05
       const mat = bottleMats[(i + row) % 4]
-      const hgt = 0.2 + ((i * 7 + row * 3) % 4) * 0.025
-      batch.cyl(mat, 0.035, 0.035, hgt, -HW + 0.17, y + 0.018 + hgt / 2, z, 10)
-      batch.cyl(mat, 0.014, 0.02, 0.07, -HW + 0.17, y + 0.018 + hgt + 0.03, z, 8)
+      const hgt = 0.18 + ((i * 7 + row * 3) % 4) * 0.022
+      batch.cyl(mat, 0.032, 0.032, hgt, -HW + 0.15, y + 0.018 + hgt / 2, z, 10)
+      batch.cyl(mat, 0.013, 0.019, 0.06, -HW + 0.15, y + 0.018 + hgt + 0.028, z, 8)
     }
   })
-  // Bar stools
+  // Bar stools (aligned with ROOM_SEATS at x = -2.65)
   ;[-2.1, -1.2, -0.3, 0.6].forEach((z) => {
-    const x = -3.0
+    const x = -2.65
     batch.cyl(M.leather, 0.2, 0.2, 0.07, x, 0.69, z, 18)
     batch.cyl(M.steel, 0.025, 0.025, 0.62, x, 0.34, z, 8)
     batch.cyl(M.steel, 0.17, 0.19, 0.02, x, 0.01, z, 16)
     batch.cyl(M.brass, 0.14, 0.14, 0.015, x, 0.27, z, 16)
-    solid(x - 0.22, x + 0.22, z - 0.22, z + 0.22, 0.72)
+    solid(x - 0.2, x + 0.2, z - 0.2, z + 0.2, 0.72)
   })
 
   // --- Door (back wall, left) ---
@@ -660,10 +701,82 @@ export function createKaraokeRoom() {
   }
   const signMats = [
     neonPlane('SAKI KARAOKE', '#ff6f61', 2.7, 0.55, 0, 2.75, -HD + 0.075, 0, 'bold 118px "Trebuchet MS", Arial, sans-serif'),
-    neonPlane('SING', '#35d6c9', 1.3, 0.5, -HW + 0.045, 2.6, -0.6, Math.PI / 2, 'bold 190px "Trebuchet MS", Arial, sans-serif'),
+    neonPlane('JUICE BAR', '#35d6c9', 1.85, 0.45, -HW + 0.045, 2.68, -0.6, Math.PI / 2, 'bold 148px "Trebuchet MS", Arial, sans-serif'),
   ]
 
   batch.build(group)
+
+  // --- Dynamic 3D drinks placed on bar counter & coffee tables ---
+  const drinksGroup = new THREE.Group()
+  drinksGroup.name = 'PlacedTableDrinks'
+  group.add(drinksGroup)
+
+  const drinkGlassGeo = track(new THREE.CylinderGeometry(0.044, 0.034, 0.135, 14, 1, true))
+  const drinkLiquidGeo = track(new THREE.CylinderGeometry(0.039, 0.031, 0.105, 14))
+  const drinkRimGeo = track(new THREE.TorusGeometry(0.043, 0.004, 8, 18))
+  drinkRimGeo.rotateX(Math.PI / 2)
+  const drinkStrawGeo = track(new THREE.CylinderGeometry(0.0045, 0.0045, 0.16, 8))
+  const drinkIceGeo = track(new THREE.BoxGeometry(0.022, 0.022, 0.022))
+  const drinkRingGeo = track(new THREE.RingGeometry(0.052, 0.068, 20))
+  drinkRingGeo.rotateX(-Math.PI / 2)
+
+  const drinkMatCache = new Map()
+  const getDrinkMat = (hex, glowMode = false) => {
+    const key = `${hex}|${glowMode}`
+    if (!drinkMatCache.has(key)) {
+      const m = glowMode
+        ? track(new THREE.MeshBasicMaterial({ color: hex, toneMapped: false }))
+        : track(new THREE.MeshStandardMaterial({ color: hex, roughness: 0.2, metalness: 0.05, transparent: true, opacity: 0.92 }))
+      drinkMatCache.set(key, m)
+    }
+    return drinkMatCache.get(key)
+  }
+
+  let currentDrinkSig = ''
+  function syncTableDrinks(tableDrinks = []) {
+    const sig = tableDrinks.map((d) => `${d.id}:${d.slotId}:${d.drinkKey}:${d.sips || 3}`).join('|')
+    if (sig === currentDrinkSig) return
+    currentDrinkSig = sig
+    drinksGroup.clear()
+
+    tableDrinks.forEach((d) => {
+      const slot = TABLE_SLOT_MAP.get(d.slotId)
+      if (!slot) return
+      const itemGroup = new THREE.Group()
+      itemGroup.position.set(slot.x, slot.y + 0.006, slot.z)
+      itemGroup.userData.drink = d
+
+      const glassMesh = new THREE.Mesh(drinkGlassGeo, M.glassClear)
+      glassMesh.position.y = 0.068
+      itemGroup.add(glassMesh)
+
+      const fillRatio = Math.max(0.35, (d.sips ?? 3) / (d.maxSips ?? 3))
+      const liqMesh = new THREE.Mesh(drinkLiquidGeo, getDrinkMat(d.color || '#35d6c9', false))
+      liqMesh.scale.y = fillRatio
+      liqMesh.position.y = 0.012 + 0.052 * fillRatio
+      itemGroup.add(liqMesh)
+
+      const rimMesh = new THREE.Mesh(drinkRimGeo, getDrinkMat(d.rimColor || '#ffffff', true))
+      rimMesh.position.y = 0.135
+      itemGroup.add(rimMesh)
+
+      const strawMesh = new THREE.Mesh(drinkStrawGeo, getDrinkMat(d.strawColor || '#ff6f61', true))
+      strawMesh.position.set(0.014, 0.095, 0.006)
+      strawMesh.rotation.z = -0.22
+      itemGroup.add(strawMesh)
+
+      const iceMesh = new THREE.Mesh(drinkIceGeo, M.warmWhite)
+      iceMesh.position.set(-0.01, 0.02 + 0.085 * fillRatio, -0.005)
+      iceMesh.rotation.set(0.3, 0.5, 0.2)
+      itemGroup.add(iceMesh)
+
+      const baseRing = new THREE.Mesh(drinkRingGeo, getDrinkMat(d.color || '#35d6c9', true))
+      baseRing.position.y = 0.002
+      itemGroup.add(baseRing)
+
+      drinksGroup.add(itemGroup)
+    })
+  }
 
   // --- Disco ball + moving beams ---
   const discoGroup = new THREE.Group()
@@ -768,9 +881,10 @@ export function createKaraokeRoom() {
     colliders,
     update,
     dispose,
+    syncTableDrinks,
     tv: { center: tvCenter, width: TV.w, height: TV.h, lightPos: tvLight.position },
     spawnPoints: [
-      [-1.2, 1.0], [0, 1.0], [1.2, 1.0], [-2.4, 0.4], [2.4, 0.4], [-0.6, 0.0], [0.6, 0.0], [0, -0.6],
+      [-1.2, 1.0], [0, 1.0], [1.2, 1.0], [-1.8, 0.4], [2.2, 0.4], [-0.6, 0.0], [0.6, 0.0], [0, -0.6],
     ],
   }
 }

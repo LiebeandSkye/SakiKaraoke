@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm'
 import { calibrateAvatarPoses, retargetMixamoClipToVRM } from './mixamoVRMRigMap.js'
+import { DRINK_CATALOG } from '../shared/barSystem.js'
 
 /**
  * Per-character config.
@@ -85,8 +86,12 @@ function getSharedPrimitives() {
       micHandleGeo: new THREE.CylinderGeometry(0.015, 0.011, 0.17, 12),
       micHeadGeo: new THREE.SphereGeometry(0.028, 14, 12),
       stickGeo: new THREE.CylinderGeometry(0.014, 0.014, 0.29, 8),
+      drinkGlassGeo: new THREE.CylinderGeometry(0.04, 0.03, 0.13, 12, 1, true),
+      drinkLiquidGeo: new THREE.CylinderGeometry(0.035, 0.027, 0.1, 12),
+      drinkStrawGeo: new THREE.CylinderGeometry(0.004, 0.004, 0.16, 8),
       micHandleMat: new THREE.MeshStandardMaterial({ color: 0x1b1e26, roughness: 0.35, metalness: 0.8 }),
       micHeadMat: new THREE.MeshStandardMaterial({ color: 0xd1d5db, roughness: 0.3, metalness: 0.9 }),
+      drinkGlassMat: new THREE.MeshStandardMaterial({ color: 0xdff6f8, roughness: 0.1, metalness: 0.1, transparent: true, opacity: 0.48 }),
       stickMats: {
         miku: new THREE.MeshBasicMaterial({ color: new THREE.Color('#5ff5ea').multiplyScalar(1.6), toneMapped: false }),
         teto: new THREE.MeshBasicMaterial({ color: new THREE.Color('#ff4d6d').multiplyScalar(1.6), toneMapped: false }),
@@ -95,7 +100,8 @@ function getSharedPrimitives() {
     const p = sharedPrimitives
     markShared(
       p.torsoGeo, p.headGeo, p.limbGeo, p.hairGeo, p.jawGeo, p.micHandleGeo, p.micHeadGeo, p.stickGeo,
-      p.micHandleMat, p.micHeadMat, p.stickMats.miku, p.stickMats.teto,
+      p.drinkGlassGeo, p.drinkLiquidGeo, p.drinkStrawGeo,
+      p.micHandleMat, p.micHeadMat, p.drinkGlassMat, p.stickMats.miku, p.stickMats.teto,
     )
   }
   return sharedPrimitives
@@ -131,6 +137,34 @@ function createGlowstickProp(characterKey) {
   const stick = new THREE.Mesh(prims.stickGeo, prims.stickMats[characterKey] || prims.stickMats.miku)
   stick.name = 'PenlightProp'
   return stick
+}
+
+function createDrinkProp() {
+  const prims = getSharedPrimitives()
+  const drinkGroup = new THREE.Group()
+  drinkGroup.name = 'JuiceGlassProp'
+  const glass = new THREE.Mesh(prims.drinkGlassGeo, prims.drinkGlassMat)
+  glass.position.y = 0.04
+  const liquidMat = new THREE.MeshStandardMaterial({ color: 0x35d6c9, roughness: 0.2, metalness: 0.05 })
+  const liquid = new THREE.Mesh(prims.drinkLiquidGeo, liquidMat)
+  liquid.position.y = 0.035
+  const strawMat = new THREE.MeshBasicMaterial({ color: 0xff6f61, toneMapped: false })
+  const straw = new THREE.Mesh(prims.drinkStrawGeo, strawMat)
+  straw.position.set(0.012, 0.065, 0.005)
+  straw.rotation.z = -0.2
+  drinkGroup.add(glass, liquid, straw)
+  drinkGroup.userData.liquidMat = liquidMat
+  drinkGroup.userData.strawMat = strawMat
+  drinkGroup.userData.drinkKey = ''
+  return drinkGroup
+}
+
+export function applyDrinkPropColor(drinkGroup, drinkKey) {
+  if (!drinkGroup || !drinkKey || drinkGroup.userData.drinkKey === drinkKey) return
+  const recipe = DRINK_CATALOG[drinkKey] || DRINK_CATALOG.miku_fizz
+  drinkGroup.userData.drinkKey = drinkKey
+  drinkGroup.userData.liquidMat?.color?.set(recipe.color)
+  drinkGroup.userData.strawMat?.color?.set(recipe.strawColor)
 }
 
 function baseRecord(overrides) {
@@ -214,6 +248,11 @@ export function createPlaceholderAvatar(characterKey = 'miku') {
   mic.visible = false
   rightLowerArm.add(mic)
 
+  const drink = createDrinkProp()
+  drink.position.set(0, -0.26, 0.06)
+  drink.visible = false
+  rightLowerArm.add(drink)
+
   const leftUpperLeg = node(hips, 0.1, -0.1, 0)
   mesh(leftUpperLeg, prims.limbGeo, darkMat, -0.2)
   const leftLowerLeg = node(leftUpperLeg, 0, -0.38, 0)
@@ -242,7 +281,7 @@ export function createPlaceholderAvatar(characterKey = 'miku') {
     armSign: 1,
     isPlaceholder: true,
     missingFile: meta.publicPath,
-    props: { mic },
+    props: { mic, drink },
     headAnchor: head,
   })
 }
@@ -461,7 +500,11 @@ function attachProps(rootGroup, characterKey) {
   stick.visible = false
   rootGroup.add(stick)
 
-  return { mic, stick }
+  const drink = createDrinkProp()
+  drink.visible = false
+  rootGroup.add(drink)
+
+  return { mic, stick, drink }
 }
 
 /**

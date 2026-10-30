@@ -17,6 +17,11 @@ import {
   angleDelta,
   maxCameraDistance,
 } from '../shared/roomPhysics.js'
+import {
+  BARTENDER_STATION,
+  SEAT_MAP,
+  resolveHoldInteraction,
+} from '../shared/barSystem.js'
 
 const TV_PX_W = 1280
 const TV_PX_H = 720
@@ -128,6 +133,17 @@ class KaraokeRoomController {
     this.lastMs = 0
     this.overlayHost = null
     this.ready = false
+    this.bartenderId = null
+    this.occupiedSeats = {}
+    this.tableDrinks = []
+    this.usersById = new Map()
+    this.sittingSeatId = null
+    this.heldDrinkKey = null
+    this.equippedDrink = null
+    this.isSipping = false
+    this.isBartending = false
+    this.currentInteraction = { type: 'open-tv', label: 'Hold E — Open TV' }
+    this.lastInteractionKey = ''
   }
 
   /**
@@ -279,10 +295,109 @@ class KaraokeRoomController {
     this.singerId = singerId ?? null
   }
 
+  syncRoomExtras({ bartenderId = null, seats = {}, tableDrinks = [], users = [] } = {}) {
+    this.bartenderId = bartenderId || null
+    this.occupiedSeats = seats || {}
+    this.tableDrinks = Array.isArray(tableDrinks) ? tableDrinks : []
+    this.usersById = new Map((users || []).map((u) => [u.id, u]))
+    this.room?.syncTableDrinks?.(this.tableDrinks)
+
+    // Reconcile local seat state with server seats map
+    if (this.myId) {
+      let myServerSeat = null
+      for (const [sId, holderId] of Object.entries(this.occupiedSeats)) {
+        if (holderId === this.myId) {
+          myServerSeat = sId
+          break
+        }
+      }
+      if (myServerSeat && this.sittingSeatId !== myServerSeat) {
+        this._applyLocalSit(myServerSeat)
+      }
+    }
+    for (const entry of this.entries.values()) {
+      this._updateNameplateText(entry)
+    }
+  }
+
+  setLocalDrinkState({ heldDrinkKey = null, equippedDrink = null, isSipping = false, isBartending = false } = {}) {
+    const changed =
+      this.heldDrinkKey !== heldDrinkKey ||
+      this.isSipping !== Boolean(isSipping) ||
+      this.isBartending !== Boolean(isBartending)
+    this.heldDrinkKey = heldDrinkKey || null
+    this.equippedDrink = equippedDrink || null
+    this.isSipping = Boolean(isSipping)
+    this.isBartending = Boolean(isBartending)
+    if (changed) this.forceSend = true
+  }
+
+  stepToBartenderStation() {
+    this.sittingSeatId = null
+    this.player.x = BARTENDER_STATION.x
+    this.player.z = BARTENDER_STATION.z
+    this.player.y = 0
+    this.player.vx = 0
+    this.player.vz = 0
+    this.player.vy = 0
+    this.player.yaw = BARTENDER_STATION.yaw
+    this.forceSend = true
+  }
+
+  sitAtSeat(seatId) {
+    const seat = SEAT_MAP.get(seatId)
+    if (!seat) return
+    this._applyLocalSit(seatId)
+    this.callbacks.onSitSeat?.(seatId)
+  }
+
+  _applyLocalSit(seatId) {
+    const seat = SEAT_MAP.get(seatId)
+    if (!seat) return
+    this.sittingSeatId = seatId
+    this.player.x = seat.x
+    this.player.z = seat.z
+    this.player.y = seat.sitRootY ?? -0.15
+    this.player.vx = 0
+    this.player.vz = 0
+    this.player.vy = 0
+    this.player.speed = 0
+    this.player.grounded = true
+    this.player.yaw = seat.yaw
+    this.forceSend = true
+  }
+
+  standUp() {
+    if (!this.sittingSeatId) return
+    const seat = SEAT_MAP.get(this.sittingSeatId)
+    this.sittingSeatId = null
+    if (seat) {
+      this.player.x = seat.standX
+      this.player.z = seat.standZ
+    }
+    this.player.y = 0
+    this.player.vy = 0
+    this.player.grounded = true
+    this.forceSend = true
+    this.callbacks.onStandSeat?.()
+  }
+
   onRemotePose(pose) {
     if (!pose || pose.id === this.myId) return
     const entry = this.entries.get(pose.id)
-    const net = { x: pose.x, y: pose.y, z: pose.z, ry: pose.ry, s: pose.s, a: pose.a, t: performance.now() }
+    const net = {
+      x: pose.x,
+      y: pose.y,
+      z: pose.z,
+      ry: pose.ry,
+      s: pose.s,
+      a: pose.a,
+      seatId: pose.seatId || null,
+      drink: pose.drink || null,
+      sip: Boolean(pose.sip),
+      bt: Boolean(pose.bt),
+      t: performance.now(),
+    }
     if (entry) {
       entry.net = net
     } else {
@@ -402,9 +517,11 @@ class KaraokeRoomController {
   }
 
   _updateNameplateText(entry) {
-    if (entry.lastText === entry.displayName) return
-    entry.lastText = entry.displayName
-    entry.el.textContent = entry.displayName || ''
+    const isBartender = this.bartenderId && entry.id === this.bartenderId
+    const label = `${isBartender ? '🍹 ' : ''}${entry.displayName || ''}`
+    if (entry.lastText === label) return
+    entry.lastText = label
+    entry.el.textContent = label
   }
 
   _placeLocalPlayer() {
@@ -449,6 +566,11 @@ class KaraokeRoomController {
       } else if (e.code === 'KeyE' && !e.repeat) {
         this.holdStart = performance.now()
         this.holdFired = false
+      } else if (/^Digit[1-9]$/.test(e.code) && !e.repeat) {
+        const idx = Number(e.code.slice(5)) - 1
+        this.callbacks.onSelectToolSlot?.(idx)
+      } else if ((e.code === 'KeyF' || e.code === 'KeyQ') && !e.repeat) {
+        this.callbacks.onPlaceEquippedDrink?.()
       }
     })
     on(window, 'keyup', (e) => {
@@ -534,6 +656,7 @@ class KaraokeRoomController {
   _frame(dt, nowMs) {
     const elapsed = (nowMs - this.startMs) / 1000
     this._adaptQuality(dt)
+    this._updateContextualInteraction()
     this._updateHold(nowMs)
     this._updateLocalPlayer(dt, nowMs)
 
@@ -567,6 +690,47 @@ class KaraokeRoomController {
     }
   }
 
+  _updateContextualInteraction() {
+    const bartenderUser = this.bartenderId ? this.usersById.get(this.bartenderId) : null
+    const next = resolveHoldInteraction({
+      px: this.player.x,
+      pz: this.player.z,
+      myId: this.myId,
+      sittingSeatId: this.sittingSeatId,
+      bartenderId: this.bartenderId,
+      bartenderName: bartenderUser?.displayName || 'Bartender',
+      occupiedSeats: this.occupiedSeats,
+      tableDrinks: this.tableDrinks,
+      equippedDrink: this.equippedDrink,
+    })
+    this.currentInteraction = next
+    const key = `${next.type}|${next.label}|${next.seat?.id || ''}|${next.drink?.id || ''}|${next.slot?.id || ''}`
+    if (key !== this.lastInteractionKey) {
+      this.lastInteractionKey = key
+      this.callbacks.onInteractionChange?.(next)
+    }
+  }
+
+  triggerCurrentInteraction() {
+    const act = this.currentInteraction || { type: 'open-tv' }
+    if (act.type === 'stand-up') {
+      this.standUp()
+    } else if (act.type === 'sit' && act.seat) {
+      this.sitAtSeat(act.seat.id)
+    } else if (act.type === 'take-drink' && act.drink) {
+      this.callbacks.onTakeDrink?.(act.drink.id)
+    } else if (act.type === 'place-drink' && act.slot) {
+      this.callbacks.onPlaceEquippedDrink?.(act.slot.id)
+    } else if (act.type === 'claim-bartender' || act.type === 'open-bartender') {
+      this.stepToBartenderStation()
+      this.callbacks.onInteractBartender?.()
+    } else if (act.type === 'bartender-busy') {
+      this.callbacks.onInteractBartender?.()
+    } else {
+      this.callbacks.onOpenTv?.()
+    }
+  }
+
   _updateHold(nowMs) {
     if (this.holdStart === null || this.holdFired) return
     const p = Math.min(1, (nowMs - this.holdStart) / HOLD_TO_OPEN_MS)
@@ -579,7 +743,7 @@ class KaraokeRoomController {
       this.holdStart = null
       this.lastHoldReport = 0
       this.callbacks.onHoldProgress?.(0)
-      this.callbacks.onOpenTv?.()
+      this.triggerCurrentInteraction()
     }
   }
 
@@ -589,6 +753,36 @@ class KaraokeRoomController {
     const k = this.keys
     const fwd = (k.fwd ? 1 : 0) - (k.back ? 1 : 0)
     const strafe = (k.right ? 1 : 0) - (k.left ? 1 : 0)
+    const wantsJump = nowMs < this.jumpBufferedUntil
+
+    // If seated on a chair/sofa, pressing move or jump stands up smoothly
+    if (this.sittingSeatId) {
+      if ((fwd || strafe || wantsJump) && this.inputEnabled) {
+        this.jumpBufferedUntil = 0
+        this.standUp()
+      } else {
+        const seat = SEAT_MAP.get(this.sittingSeatId)
+        if (seat) {
+          this.player.x = damp(this.player.x, seat.x, 16, dt)
+          this.player.z = damp(this.player.z, seat.z, 16, dt)
+          this.player.y = damp(this.player.y, seat.sitRootY ?? -0.15, 16, dt)
+          this.player.yaw += angleDelta(this.player.yaw, seat.yaw) * (1 - Math.exp(-14 * dt))
+          this.player.speed = 0
+          this.player.grounded = true
+        }
+        me.pos.set(this.player.x, this.player.y, this.player.z)
+        me.yaw = this.player.yaw
+        me.rec.moveSpeed = 0
+        me.rec.isAirborne = false
+        me.rec.verticalSpeed = 0
+        me.rec.isSitting = true
+        me.rec.heldDrinkKey = this.heldDrinkKey
+        me.rec.isSipping = this.isSipping
+        me.rec.isBartending = false
+        return
+      }
+    }
+
     let dirX = 0
     let dirZ = 0
     if ((fwd || strafe) && this.inputEnabled) {
@@ -601,7 +795,6 @@ class KaraokeRoomController {
       dirZ /= len
     }
 
-    const wantsJump = nowMs < this.jumpBufferedUntil
     const p = this.player
     stepPlayer(p, { dirX, dirZ, run: k.run, jump: wantsJump && p.grounded }, dt, this.room.colliders)
     if (wantsJump && !p.grounded) this.jumpBufferedUntil = 0
@@ -615,6 +808,10 @@ class KaraokeRoomController {
     me.rec.moveSpeed = p.speed
     me.rec.isAirborne = !p.grounded
     me.rec.verticalSpeed = p.vy / 4
+    me.rec.isSitting = false
+    me.rec.heldDrinkKey = this.heldDrinkKey
+    me.rec.isSipping = this.isSipping
+    me.rec.isBartending = this.isBartending
   }
 
   _updateEntry(entry, dt, nowMs, songSec, playing) {
@@ -645,7 +842,38 @@ class KaraokeRoomController {
 
   _updateRemote(entry, dt, nowMs) {
     const net = entry.net
+    // Also check if server seats table says this remote player is seated
+    let remoteSeatId = net?.seatId || null
+    if (!remoteSeatId && this.occupiedSeats) {
+      for (const [sId, holderId] of Object.entries(this.occupiedSeats)) {
+        if (holderId === entry.id) {
+          remoteSeatId = sId
+          break
+        }
+      }
+    }
+    const remoteSeat = remoteSeatId ? SEAT_MAP.get(remoteSeatId) : null
+    if (remoteSeat) {
+      entry.pos.x = damp(entry.pos.x, remoteSeat.x, 16, dt)
+      entry.pos.z = damp(entry.pos.z, remoteSeat.z, 16, dt)
+      entry.pos.y = damp(entry.pos.y, remoteSeat.sitRootY ?? -0.15, 16, dt)
+      entry.yaw += angleDelta(entry.yaw, remoteSeat.yaw) * (1 - Math.exp(-14 * dt))
+      entry.rec.moveSpeed = 0
+      entry.rec.isAirborne = false
+      entry.rec.verticalSpeed = 0
+      entry.rec.isSitting = true
+      entry.rec.heldDrinkKey = net?.drink || null
+      entry.rec.isSipping = Boolean(net?.sip)
+      entry.rec.isBartending = false
+      return
+    }
+
+    entry.rec.isSitting = false
     if (!net) return
+    entry.rec.heldDrinkKey = net.drink || null
+    entry.rec.isSipping = Boolean(net.sip)
+    entry.rec.isBartending = Boolean(net.bt)
+
     const age = Math.min(0.15, (nowMs - net.t) / 1000)
     const moving = net.s > 0.2
     const tx = net.x + (moving ? Math.sin(net.ry) * net.s * age : 0)
@@ -728,15 +956,25 @@ class KaraokeRoomController {
     if (this.sendTimer < POSE_SEND_INTERVAL) return
     const p = this.player
     const pose = {
-      x: +p.x.toFixed(3), y: +p.y.toFixed(3), z: +p.z.toFixed(3),
-      ry: +p.yaw.toFixed(3), s: +p.speed.toFixed(2), a: p.grounded ? 0 : 1,
+      x: +p.x.toFixed(3),
+      y: +p.y.toFixed(3),
+      z: +p.z.toFixed(3),
+      ry: +p.yaw.toFixed(3),
+      s: +p.speed.toFixed(2),
+      a: p.grounded ? 0 : 1,
+      seatId: this.sittingSeatId || null,
+      drink: this.heldDrinkKey || null,
+      sip: this.isSipping ? 1 : 0,
+      bt: this.isBartending ? 1 : 0,
     }
     const last = this.lastSent
     const changed =
       !last ||
       Math.abs(pose.x - last.x) > 0.004 || Math.abs(pose.z - last.z) > 0.004 ||
       Math.abs(pose.y - last.y) > 0.004 || Math.abs(pose.ry - last.ry) > 0.01 ||
-      pose.a !== last.a || (pose.s > 0.2) !== (last.s > 0.2)
+      pose.a !== last.a || (pose.s > 0.2) !== (last.s > 0.2) ||
+      pose.seatId !== last.seatId || pose.drink !== last.drink ||
+      pose.sip !== last.sip || pose.bt !== last.bt
     if (changed || this.forceSend || this.heartbeatTimer > POSE_HEARTBEAT) {
       this.sendTimer = 0
       this.heartbeatTimer = 0

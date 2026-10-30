@@ -189,6 +189,52 @@ export function RoomProvider({ children }) {
     })
   }
 
+  const claimBartender = (cb) => {
+    if (!room) return
+    socket.emit('claim-bartender', { roomCode: room.code }, (res) => {
+      if (res && !res.ok) setError(res.error || 'Could not claim bartender')
+      cb?.(res)
+    })
+  }
+
+  const releaseBartender = (cb) => {
+    if (!room) return
+    socket.emit('release-bartender', { roomCode: room.code }, (res) => {
+      cb?.(res)
+    })
+  }
+
+  const sitOnSeat = (seatId, cb) => {
+    if (!room) return
+    socket.emit('sit-seat', { roomCode: room.code, seatId }, (res) => {
+      if (res && !res.ok) setError(res.error || 'Seat is already occupied')
+      cb?.(res)
+    })
+  }
+
+  const standFromSeat = (cb) => {
+    if (!room) return
+    socket.emit('stand-seat', { roomCode: room.code }, (res) => {
+      cb?.(res)
+    })
+  }
+
+  const placeDrink = (payload, cb) => {
+    if (!room) return
+    socket.emit('place-drink', { roomCode: room.code, ...payload }, (res) => {
+      if (res && !res.ok) setError(res.error || 'Could not place drink')
+      cb?.(res)
+    })
+  }
+
+  const takeDrink = (drinkId, cb) => {
+    if (!room) return
+    socket.emit('take-drink', { roomCode: room.code, drinkId }, (res) => {
+      if (res && !res.ok) setError(res.error || 'Could not take drink')
+      cb?.(res)
+    })
+  }
+
   const leaveRoom = () => {
     socket.disconnect()
     // Instantly reconnect so client is ready for a new room
@@ -220,6 +266,12 @@ export function RoomProvider({ children }) {
         advanceRotation,
         changeRotationMode,
         setLyricsOffset,
+        claimBartender,
+        releaseBartender,
+        sitOnSeat,
+        standFromSeat,
+        placeDrink,
+        takeDrink,
         leaveRoom,
       }}
     >

@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { DRINK_CATALOG } from '../shared/barSystem.js'
 
 /**
  * Standard Mixamo-to-VRM humanoid bone name mapping (`mixamoVRMRigMap`).
@@ -234,6 +235,17 @@ export function calibrateAvatarPoses(vrm, rootGroup, bones) {
     new THREE.Vector3(0.1, -0.95, 0.28),
   )
 
+  // Right arm holding a juice glass out in front of chest/waist
+  const drinkHold = solveTwoBonePose(
+    vrm,
+    rootGroup,
+    bones.rightUpperArm,
+    bones.rightLowerArm,
+    bones.rightHand,
+    new THREE.Vector3(-0.28, -0.88, 0.32),
+    new THREE.Vector3(0.22, 0.18, 0.92),
+  )
+
   return {
     micUpper: mic.upperQ,
     micLower: mic.lowerQ,
@@ -245,6 +257,8 @@ export function calibrateAvatarPoses(vrm, rootGroup, bones) {
     idleRightLower: idleRight.lowerQ,
     idleLeftUpper: idleLeft.upperQ,
     idleLeftLower: idleLeft.lowerQ,
+    drinkUpper: drinkHold.upperQ,
+    drinkLower: drinkHold.lowerQ,
   }
 }
 
@@ -330,10 +344,20 @@ function applyAirbornePose(rec, isVRM0, b) {
 export function updateAvatarAnimationFrame(rec, deltaSec, elapsedSec) {
   if (!rec) return
   const state = rec.animationState || 'idle'
+  const sitting = Boolean(rec.isSitting)
+  if (sitting) {
+    rec.moveSpeed = 0
+    rec.isAirborne = false
+  }
   // Walking/jumping suppresses the stationary singing & cheering poses
   const moving = driveLocomotion(rec, deltaSec)
-  rec.singIntensity = damp(rec.singIntensity ?? 0, state === 'singing' && !moving ? 1 : 0, 5.5, deltaSec)
-  rec.cheerIntensity = damp(rec.cheerIntensity ?? 0, state === 'cheering' && !moving ? 1 : 0, 4.5, deltaSec)
+  const hasDrink = Boolean(rec.heldDrinkKey)
+  rec.singIntensity = damp(rec.singIntensity ?? 0, state === 'singing' && !moving && !rec.isBartending ? 1 : 0, 5.5, deltaSec)
+  rec.cheerIntensity = damp(rec.cheerIntensity ?? 0, state === 'cheering' && !moving && !rec.isBartending ? 1 : 0, 4.5, deltaSec)
+  rec.sitIntensity = damp(rec.sitIntensity ?? 0, sitting ? 1 : 0, 10, deltaSec)
+  rec.drinkHoldIntensity = damp(rec.drinkHoldIntensity ?? 0, hasDrink ? 1 : 0, 8, deltaSec)
+  rec.sipIntensity = damp(rec.sipIntensity ?? 0, hasDrink && rec.isSipping ? 1 : 0, 9, deltaSec)
+  rec.bartendIntensity = damp(rec.bartendIntensity ?? 0, rec.isBartending ? 1 : 0, 7, deltaSec)
 
   if (rec.isPlaceholder) {
     updatePlaceholder(rec, deltaSec, elapsedSec)
@@ -342,6 +366,10 @@ export function updateAvatarAnimationFrame(rec, deltaSec, elapsedSec) {
 
   const s = rec.singIntensity
   const c = rec.cheerIntensity
+  const sit = rec.sitIntensity
+  const dHold = rec.drinkHoldIntensity
+  const sip = rec.sipIntensity
+  const bt = rec.bartendIntensity
   const v0 = rec.isVRM0
   const b = rec.bones || {}
   const poses = rec.poses
@@ -388,30 +416,68 @@ export function updateAvatarAnimationFrame(rec, deltaSec, elapsedSec) {
     Math.sin(beat / 4) * 0.055 * (s + c),
   )
 
-  // 4. Calibrated Singing & Cheering Arm Poses
+  // 4. Calibrated Singing, Cheering, Drinking & Bartending Arm Poses
   if (poses) {
-    blendLocalQuat(b.rightUpperArm, poses.micUpper, s)
-    blendLocalQuat(b.rightLowerArm, poses.micLower, s)
-    addRotation(b.rightUpperArm, v0, groove * 0.03 * s, 0, 0)
+    // If holding a drink, right arm holds the glass (and raises to mouth when sipping)
+    const micWeight = s * (1 - dHold)
+    blendLocalQuat(b.rightUpperArm, poses.micUpper, micWeight)
+    blendLocalQuat(b.rightLowerArm, poses.micLower, micWeight)
+    addRotation(b.rightUpperArm, v0, groove * 0.03 * micWeight, 0, 0)
 
-    blendLocalQuat(b.leftUpperArm, poses.gestureUpper, s * 0.85)
-    blendLocalQuat(b.leftLowerArm, poses.gestureLower, s * 0.85)
-    addRotation(b.leftUpperArm, v0, Math.sin(beat / 4 + 1) * 0.1 * s, Math.sin(beat / 8) * 0.14 * s, 0)
+    if (dHold > 0.01) {
+      blendLocalQuat(b.rightUpperArm, poses.drinkUpper, dHold * (1 - sip))
+      blendLocalQuat(b.rightLowerArm, poses.drinkLower, dHold * (1 - sip))
+      blendLocalQuat(b.rightUpperArm, poses.micUpper, sip)
+      blendLocalQuat(b.rightLowerArm, poses.micLower, sip)
+      addRotation(b.rightLowerArm, v0, -0.22 * sip, 0, 0)
+    }
 
-    blendLocalQuat(b.leftUpperArm, poses.cheerUpper, c)
-    blendLocalQuat(b.leftLowerArm, poses.cheerLower, c)
-    addRotation(b.leftUpperArm, v0, Math.sin(beat / 2) * 0.25 * c, 0, 0)
+    if (bt > 0.01) {
+      // Energetic cocktail-shaker motion in front of chest while bartending
+      const shakeWave = Math.sin(t * 14)
+      blendLocalQuat(b.rightUpperArm, poses.micUpper, bt * 0.85)
+      blendLocalQuat(b.rightLowerArm, poses.micLower, bt * 0.85)
+      blendLocalQuat(b.leftUpperArm, poses.gestureUpper, bt * 0.85)
+      blendLocalQuat(b.leftLowerArm, poses.gestureLower, bt * 0.85)
+      addRotation(b.rightUpperArm, v0, shakeWave * 0.18 * bt, 0, 0)
+      addRotation(b.leftUpperArm, v0, -shakeWave * 0.14 * bt, 0, 0)
+    }
+
+    blendLocalQuat(b.leftUpperArm, poses.gestureUpper, s * 0.85 * (1 - bt))
+    blendLocalQuat(b.leftLowerArm, poses.gestureLower, s * 0.85 * (1 - bt))
+    addRotation(b.leftUpperArm, v0, Math.sin(beat / 4 + 1) * 0.1 * s * (1 - bt), Math.sin(beat / 8) * 0.14 * s * (1 - bt), 0)
+
+    blendLocalQuat(b.leftUpperArm, poses.cheerUpper, c * (1 - bt))
+    blendLocalQuat(b.leftLowerArm, poses.cheerLower, c * (1 - bt))
+    addRotation(b.leftUpperArm, v0, Math.sin(beat / 2) * 0.25 * c * (1 - bt), 0, 0)
   }
 
-  // 5. Knees dip on the beat
-  const dip = Math.abs(Math.sin(beat / 2)) * 0.09 * (s + c * 0.75)
-  addRotation(b.leftUpperLeg, v0, -dip, 0, 0)
-  addRotation(b.rightUpperLeg, v0, -dip, 0, 0)
-  addRotation(b.leftLowerLeg, v0, dip * 2, 0, 0)
-  addRotation(b.rightLowerLeg, v0, dip * 2, 0, 0)
+  if (sip > 0.02) {
+    addRotation(b.neck || b.head, v0, -0.22 * sip, 0, 0)
+  }
+
+  // 5. Knees dip on the beat (or bend into a seated posture when sitting on a sofa/stool)
+  if (sit > 0.01) {
+    // Seated posture: thighs horizontal (-1.42 rad), knees bent down (+1.42 rad)
+    if (b.leftUpperLeg) b.leftUpperLeg.quaternion.identity()
+    if (b.rightUpperLeg) b.rightUpperLeg.quaternion.identity()
+    if (b.leftLowerLeg) b.leftLowerLeg.quaternion.identity()
+    if (b.rightLowerLeg) b.rightLowerLeg.quaternion.identity()
+    addRotation(b.leftUpperLeg, v0, -1.42 * sit, 0, 0.06 * sit)
+    addRotation(b.rightUpperLeg, v0, -1.42 * sit, 0, -0.06 * sit)
+    addRotation(b.leftLowerLeg, v0, 1.42 * sit, 0, 0)
+    addRotation(b.rightLowerLeg, v0, 1.42 * sit, 0, 0)
+    addRotation(b.spine, v0, -0.05 * sit, 0, 0)
+  } else {
+    const dip = Math.abs(Math.sin(beat / 2)) * 0.09 * (s + c * 0.75)
+    addRotation(b.leftUpperLeg, v0, -dip, 0, 0)
+    addRotation(b.rightUpperLeg, v0, -dip, 0, 0)
+    addRotation(b.leftLowerLeg, v0, dip * 2, 0, 0)
+    addRotation(b.rightLowerLeg, v0, dip * 2, 0, 0)
+  }
 
   // 5b. Airborne pose (tucked legs, arms out) layered over the locomotion clips
-  applyAirbornePose(rec, v0, b)
+  if (sit < 0.05) applyAirbornePose(rec, v0, b)
 
   // 6. Facial expressions (lip flap is stylised, not audio-driven)
   const em = rec.vrm?.expressionManager
@@ -424,10 +490,10 @@ export function updateAvatarAnimationFrame(rec, deltaSec, elapsedSec) {
     rec.blinkValue = Math.max(0, rec.blinkValue - deltaSec * 7)
     const blink = rec.blinkValue > 0.5 ? (1 - rec.blinkValue) * 2 : rec.blinkValue * 2
     const syllable = Math.abs(Math.sin(t * 9.5)) * (0.55 + 0.45 * Math.sin(t * 2.3))
-    em.setValue('aa', s > 0.05 ? (0.15 + 0.6 * syllable) * s : 0)
-    em.setValue('oh', s > 0.05 ? Math.max(0, Math.sin(t * 4.1)) * 0.25 * s : 0)
-    em.setValue('happy', Math.min(1, 0.25 * s + 0.55 * c))
-    em.setValue('blink', Math.min(1, blink) * (1 - 0.5 * c))
+    em.setValue('aa', s > 0.05 ? (0.15 + 0.6 * syllable) * s * (1 - sip) : 0)
+    em.setValue('oh', Math.max(sip * 0.45, s > 0.05 ? Math.max(0, Math.sin(t * 4.1)) * 0.25 * s : 0))
+    em.setValue('happy', Math.min(1, 0.25 * s + 0.55 * c + 0.65 * sip))
+    em.setValue('blink', Math.min(1, Math.max(blink * (1 - 0.5 * c), sip * 0.6)))
   }
 
   // 7. Advance VRM internal managers (spring bones, expressions & normalized -> raw rig copy)
@@ -436,7 +502,7 @@ export function updateAvatarAnimationFrame(rec, deltaSec, elapsedSec) {
   // 8. Position handheld props in rootGroup space from exact hand/head world coordinates
   const mic = rec.props?.mic
   if (mic) {
-    const showMic = s > 0.12 && b.rightHand && b.head && rec.rootGroup
+    const showMic = s > 0.12 && dHold < 0.2 && b.rightHand && b.head && rec.rootGroup
     mic.visible = Boolean(showMic)
     if (showMic) {
       rec.rootGroup.updateMatrixWorld(true)
@@ -451,6 +517,29 @@ export function updateAvatarAnimationFrame(rec, deltaSec, elapsedSec) {
       mic.quaternion.copy(_q)
       const pop = Math.min(1, (s - 0.12) * 2.5)
       mic.scale.setScalar(0.4 + 0.6 * pop)
+    }
+  }
+
+  const drink = rec.props?.drink
+  if (drink) {
+    const showDrink = dHold > 0.1 && b.rightHand && rec.rootGroup
+    drink.visible = Boolean(showDrink)
+    if (showDrink) {
+      if (rec.heldDrinkKey && drink.userData.drinkKey !== rec.heldDrinkKey) {
+        const recipe = DRINK_CATALOG[rec.heldDrinkKey] || DRINK_CATALOG.miku_fizz
+        drink.userData.drinkKey = rec.heldDrinkKey
+        drink.userData.liquidMat?.color?.set(recipe.color)
+        drink.userData.strawMat?.color?.set(recipe.strawColor)
+      }
+      rec.rootGroup.updateMatrixWorld(true)
+      b.rightHand.getWorldPosition(_vHand)
+      rec.rootGroup.worldToLocal(_vHand)
+      drink.position.copy(_vHand)
+      drink.position.y += 0.015
+      // Keep glass upright while holding, and tilt toward mouth when sipping
+      _e.set(-0.65 * sip, 0, 0, 'XYZ')
+      drink.quaternion.setFromEuler(_e)
+      drink.scale.setScalar(Math.min(1, dHold * 1.4))
     }
   }
 
@@ -487,20 +576,30 @@ function updatePlaceholder(rec, deltaSec, elapsedSec) {
   const r = rec.restQuats || {}
   if (!b) return
   const s = Math.max(rec.singIntensity, rec.cheerIntensity * 0.6)
+  const sit = rec.sitIntensity ?? 0
+  const dHold = rec.drinkHoldIntensity ?? 0
+  const sip = rec.sipIntensity ?? 0
   const phase = elapsedSec + (rec.phaseOffset || 0)
   const a = Math.min(1, deltaSec * 8)
 
-  if (rec.rootGroup) {
+  if (rec.rootGroup && !rec.externalTransform) {
     rec.rootGroup.position.y = rec.basePosition.y + lerp(Math.sin(phase * 2.1) * 0.01, Math.abs(Math.sin(phase * 6.2)) * 0.05, s)
     rec.rootGroup.rotation.y = rec.baseRotationY + lerp(Math.sin(phase * 0.9) * 0.04, Math.sin(phase * 3.1) * 0.14, s)
   }
   const pitch = lerp(Math.sin(phase * 2.1) * 0.03, Math.sin(phase * 6.2) * 0.08 + 0.04, s)
   slerpEuler(b.spine, r.spine, pitch, 0, 0, a)
-  slerpEuler(b.head, r.head, lerp(Math.sin(phase * 1.8) * 0.035, Math.sin(phase * 6.2) * 0.11, s), 0, 0, a)
-  slerpEuler(b.rightUpperArm, r.rightUpperArm, lerp(0.08, -0.75, rec.singIntensity), 0, lerp(-0.12, -0.22, s), a)
-  slerpEuler(b.rightLowerArm, r.rightLowerArm, lerp(0.15, -1.15, rec.singIntensity), 0, 0, a)
+  slerpEuler(b.head, r.head, lerp(Math.sin(phase * 1.8) * 0.035, Math.sin(phase * 6.2) * 0.11, s) - 0.2 * sip, 0, 0, a)
+  const rightUpperPitch = dHold > 0.1 ? lerp(-0.45, -0.85, sip) : lerp(0.08, -0.75, rec.singIntensity)
+  const rightLowerPitch = dHold > 0.1 ? lerp(-0.75, -1.25, sip) : lerp(0.15, -1.15, rec.singIntensity)
+  slerpEuler(b.rightUpperArm, r.rightUpperArm, rightUpperPitch, 0, lerp(-0.12, -0.22, s), a)
+  slerpEuler(b.rightLowerArm, r.rightLowerArm, rightLowerPitch, 0, 0, a)
   slerpEuler(b.leftUpperArm, r.leftUpperArm, lerp(0.08, -0.45 + Math.sin(phase * 3.1) * 0.3, s), 0, lerp(0.12, 0.35, s), a)
   slerpEuler(b.leftLowerArm, r.leftLowerArm, lerp(0.15, -0.65, s), 0, 0, a)
+  slerpEuler(b.leftUpperLeg, r.leftUpperLeg, -1.4 * sit, 0, 0, a)
+  slerpEuler(b.rightUpperLeg, r.rightUpperLeg, -1.4 * sit, 0, 0, a)
+  slerpEuler(b.leftLowerLeg, r.leftLowerLeg, 1.4 * sit, 0, 0, a)
+  slerpEuler(b.rightLowerLeg, r.rightLowerLeg, 1.4 * sit, 0, 0, a)
   if (b.jaw) slerpEuler(b.jaw, r.jaw, rec.singIntensity > 0.05 ? (0.12 + 0.18 * Math.abs(Math.sin(phase * 9.5))) * rec.singIntensity : 0, 0, 0, a)
-  if (rec.props?.mic) rec.props.mic.visible = rec.singIntensity > 0.12
+  if (rec.props?.mic) rec.props.mic.visible = rec.singIntensity > 0.12 && dHold < 0.2
+  if (rec.props?.drink) rec.props.drink.visible = dHold > 0.1
 }

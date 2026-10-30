@@ -7,6 +7,7 @@ import {
   scheduleControl,
 } from '../src/shared/playbackSync.js'
 import { nextSingerState, normalizeRotation } from '../src/shared/rotation.js'
+import { DRINK_CATALOG, SEAT_MAP, TABLE_SLOTS, TABLE_SLOT_MAP } from '../src/shared/barSystem.js'
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 
@@ -43,6 +44,9 @@ function serializeRoom(room, nowMs = Date.now()) {
     rotation: normalizeRotation(room.rotation),
     currentSingerId: room.rotation.singerIds.at(room.rotation.currentSingerIndex) ?? null,
     expectedTimeSec: expectedPlaybackTime(room.playback, nowMs),
+    bartenderId: room.bartenderId ?? null,
+    seats: { ...(room.seats || {}) },
+    tableDrinks: [...(room.tableDrinks || [])],
   }
 }
 
@@ -91,6 +95,9 @@ export function createRoomStore({
         currentSingerIndex: 0,
         mode: 'auto',
       },
+      bartenderId: null,
+      seats: {},
+      tableDrinks: [],
     }
 
     rooms.set(code, room)
@@ -138,6 +145,15 @@ export function createRoomStore({
     socketRooms.delete(socketId)
     room.rotation.singerIds = room.rotation.singerIds.filter((id) => id !== socketId)
     room.rotation = normalizeRotation(room.rotation)
+
+    if (room.bartenderId === socketId) {
+      room.bartenderId = null
+    }
+    if (room.seats) {
+      for (const [seatId, holderId] of Object.entries(room.seats)) {
+        if (holderId === socketId) delete room.seats[seatId]
+      }
+    }
 
     if (room.users.size === 0) {
       rooms.delete(room.code)
@@ -308,20 +324,130 @@ export function createRoomStore({
     return { ok: true, room: publicState(room) }
   }
 
+  function claimBartender({ roomCode, socketId }) {
+    const room = getRoom(roomCode)
+    if (!room) return { ok: false, error: 'Room not found' }
+    if (!room.users.has(socketId)) return { ok: false, error: 'User not in room' }
+    if (room.bartenderId && room.bartenderId !== socketId && room.users.has(room.bartenderId)) {
+      return { ok: false, error: 'Another player is currently the bartender' }
+    }
+    for (const [seatId, holderId] of Object.entries(room.seats)) {
+      if (holderId === socketId) delete room.seats[seatId]
+    }
+    room.bartenderId = socketId
+    return { ok: true, room: publicState(room) }
+  }
+
+  function releaseBartender({ roomCode, socketId }) {
+    const room = getRoom(roomCode)
+    if (!room) return { ok: false, error: 'Room not found' }
+    if (room.bartenderId === socketId) {
+      room.bartenderId = null
+    }
+    return { ok: true, room: publicState(room) }
+  }
+
+  function sitOnSeat({ roomCode, socketId, seatId }) {
+    const room = getRoom(roomCode)
+    if (!room) return { ok: false, error: 'Room not found' }
+    if (!room.users.has(socketId)) return { ok: false, error: 'User not in room' }
+    if (!SEAT_MAP.has(seatId)) return { ok: false, error: 'Invalid seat' }
+    const holder = room.seats[seatId]
+    if (holder && holder !== socketId && room.users.has(holder)) {
+      return { ok: false, error: 'Seat is already taken' }
+    }
+    for (const [sId, hId] of Object.entries(room.seats)) {
+      if (hId === socketId) delete room.seats[sId]
+    }
+    if (room.bartenderId === socketId) {
+      room.bartenderId = null
+    }
+    room.seats[seatId] = socketId
+    return { ok: true, seatId, room: publicState(room) }
+  }
+
+  function standFromSeat({ roomCode, socketId }) {
+    const room = getRoom(roomCode)
+    if (!room) return { ok: false, error: 'Room not found' }
+    for (const [sId, hId] of Object.entries(room.seats)) {
+      if (hId === socketId) delete room.seats[sId]
+    }
+    return { ok: true, room: publicState(room) }
+  }
+
+  function placeDrink({ roomCode, socketId, drinkKey, quality = 3, sips, slotId, preferredSurface = 'bar' }) {
+    const room = getRoom(roomCode)
+    if (!room) return { ok: false, error: 'Room not found' }
+    const user = room.users.get(socketId)
+    if (!user) return { ok: false, error: 'User not in room' }
+
+    const recipe = DRINK_CATALOG[drinkKey] || DRINK_CATALOG.miku_fizz
+    const usedSlots = new Set(room.tableDrinks.map((d) => d.slotId))
+
+    let chosenSlot = slotId && TABLE_SLOT_MAP.get(slotId)
+    if (!chosenSlot || usedSlots.has(chosenSlot.id)) {
+      chosenSlot =
+        TABLE_SLOTS.find((s) => s.surface === preferredSurface && !usedSlots.has(s.id)) ||
+        TABLE_SLOTS.find((s) => !usedSlots.has(s.id))
+    }
+    if (!chosenSlot) {
+      return { ok: false, error: 'All bar and table spots are full!' }
+    }
+
+    const drink = {
+      id: makeId(),
+      drinkKey: recipe.key,
+      name: recipe.name,
+      emoji: recipe.emoji,
+      color: recipe.color,
+      rimColor: recipe.rimColor,
+      strawColor: recipe.strawColor,
+      quality: Math.max(1, Math.min(3, Number(quality) || 3)),
+      sips: Math.max(1, Math.min(recipe.sips, Number(sips) || recipe.sips)),
+      maxSips: recipe.sips,
+      madeBy: socketId,
+      madeByName: user.displayName,
+      slotId: chosenSlot.id,
+      createdAtMs: now(),
+    }
+
+    room.tableDrinks.push(drink)
+    return { ok: true, drink, room: publicState(room) }
+  }
+
+  function takeDrink({ roomCode, socketId, drinkId }) {
+    const room = getRoom(roomCode)
+    if (!room) return { ok: false, error: 'Room not found' }
+    if (!room.users.has(socketId)) return { ok: false, error: 'User not in room' }
+
+    const idx = room.tableDrinks.findIndex((d) => d.id === drinkId)
+    if (idx === -1) {
+      return { ok: false, error: 'Drink was already taken' }
+    }
+    const [drink] = room.tableDrinks.splice(idx, 1)
+    return { ok: true, drink, room: publicState(room) }
+  }
+
   return {
     addSong,
     advanceSinger,
     applyHostControl,
+    claimBartender,
     createRoom,
     getRoom,
     getSyncState,
     hostHeartbeat,
     joinRoom,
     leaveRoom,
+    placeDrink,
     playNextSong,
     publicState,
+    releaseBartender,
     setCharacter,
     setLyricsOffset,
     setRotationMode,
+    sitOnSeat,
+    standFromSeat,
+    takeDrink,
   }
 }
