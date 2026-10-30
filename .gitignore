@@ -25,3 +25,6 @@ goal.md
 *.njsproj
 *.sln
 *.sw?
+
+karaoke.zip
+karaoke/

@@ -207,4 +207,32 @@ describe('room store', () => {
     assert.equal(result.ok, true)
     assert.equal(result.room.rotation.currentSingerIndex, 1)
   })
+
+  it('stores character choice on createRoom, joinRoom, and setCharacter', () => {
+    const store = createRoomStore({ now: () => 1000, makeCode: () => 'ABC123' })
+    const created = store.createRoom({
+      socketId: 'host',
+      displayName: 'Saki',
+      character: 'miku',
+    })
+    assert.equal(created.ok, true)
+    assert.equal(created.room.users.at(0).character, 'miku')
+
+    const joined = store.joinRoom({
+      roomCode: 'ABC123',
+      socketId: 'guest',
+      displayName: 'Kasane',
+      character: 'teto',
+    })
+    assert.equal(joined.ok, true)
+    assert.equal(joined.room.users.at(1).character, 'teto')
+
+    const swapped = store.setCharacter({
+      roomCode: 'ABC123',
+      socketId: 'host',
+      character: 'teto',
+    })
+    assert.equal(swapped.ok, true)
+    assert.equal(swapped.room.users.at(0).character, 'teto')
+  })
 })

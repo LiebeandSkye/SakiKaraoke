@@ -119,7 +119,11 @@ export default function QueueSidebar() {
               >
                 <span className="singer-order tabular-nums">#{index + 1}</span>
                 <span className="singer-name">
-                  {u.displayName} {u.isHost && <span className="host-badge">Host</span>}
+                  {u.displayName}{' '}
+                  <span className={`singer-char-badge char-${u.character || 'miku'}`}>
+                    {u.character === 'teto' ? 'Teto' : 'Miku'}
+                  </span>
+                  {u.isHost && <span className="host-badge">Host</span>}
                 </span>
                 {isCurrentSinging && <span className="singing-now-label">SINGING</span>}
               </div>

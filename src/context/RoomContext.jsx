@@ -46,21 +46,26 @@ export function RoomProvider({ children }) {
     }
   }, [])
 
-  const createRoom = (displayName) => {
+  const [selectedCharacter, setSelectedCharacter] = useState('miku')
+
+  const createRoom = (displayName, character = selectedCharacter) => {
     setError(null)
     if (!displayName || !displayName.trim()) {
       setError('Display name is required')
       return
     }
 
+    const chosenChar = character === 'teto' ? 'teto' : 'miku'
+    setSelectedCharacter(chosenChar)
+
     // Ensure socket is connected before emitting
     if (!socket.connected) {
-      socket.once('connect', () => createRoom(displayName))
+      socket.once('connect', () => createRoom(displayName, chosenChar))
       socket.connect()
       return
     }
 
-    socket.emit('create-room', { displayName }, (res) => {
+    socket.emit('create-room', { displayName, character: chosenChar }, (res) => {
       if (res.ok) {
         setRoom(res.room)
         // The host is the creator — use hostId to reliably find ourselves
@@ -74,7 +79,7 @@ export function RoomProvider({ children }) {
     })
   }
 
-  const joinRoom = (roomCode, displayName) => {
+  const joinRoom = (roomCode, displayName, character = selectedCharacter) => {
     setError(null)
     if (!roomCode || !roomCode.trim()) {
       setError('Room code is required')
@@ -85,23 +90,41 @@ export function RoomProvider({ children }) {
       return
     }
 
+    const chosenChar = character === 'teto' ? 'teto' : 'miku'
+    setSelectedCharacter(chosenChar)
+
     // Ensure socket is connected before emitting
     if (!socket.connected) {
-      socket.once('connect', () => joinRoom(roomCode, displayName))
+      socket.once('connect', () => joinRoom(roomCode, displayName, chosenChar))
       socket.connect()
       return
     }
 
-    socket.emit('join-room', { roomCode: roomCode.trim(), displayName }, (res) => {
-      if (res.ok) {
-        setRoom(res.room)
-        if (res.room && Array.isArray(res.room.users)) {
-          // Use socket.id to find ourselves in the joined room
-          const me = res.room.users.find((u) => u.id === socket.id)
-          if (me) setUser(me)
+    socket.emit(
+      'join-room',
+      { roomCode: roomCode.trim(), roomId: roomCode.trim(), displayName, username: displayName, character: chosenChar },
+      (res) => {
+        if (res.ok) {
+          setRoom(res.room)
+          if (res.room && Array.isArray(res.room.users)) {
+            // Use socket.id to find ourselves in the joined room
+            const me = res.room.users.find((u) => u.id === socket.id)
+            if (me) setUser(me)
+          }
+        } else {
+          setError(res.error || 'Failed to join room')
         }
-      } else {
-        setError(res.error || 'Failed to join room')
+      }
+    )
+  }
+
+  const changeCharacter = (character) => {
+    const chosenChar = character === 'teto' ? 'teto' : 'miku'
+    setSelectedCharacter(chosenChar)
+    if (!room) return
+    socket.emit('set-character', { roomCode: room.code, character: chosenChar }, (res) => {
+      if (res && !res.ok) {
+        setError(res.error || 'Failed to switch character')
       }
     })
   }
@@ -186,8 +209,11 @@ export function RoomProvider({ children }) {
         error,
         setError,
         clearError,
+        selectedCharacter,
+        setSelectedCharacter,
         createRoom,
         joinRoom,
+        changeCharacter,
         addSong,
         controlPlayback,
         playNext,

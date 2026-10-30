@@ -84,12 +84,13 @@ io.on('connection', (socket) => {
   console.log(`Socket connected: ${socket.id}`)
 
   // Create Room
-  socket.on('create-room', ({ displayName }, callback) => {
+  socket.on('create-room', ({ displayName, username, character }, callback) => {
     try {
-      const result = store.createRoom({ socketId: socket.id, displayName })
+      const name = displayName ?? username
+      const result = store.createRoom({ socketId: socket.id, displayName: name, character })
       if (result.ok) {
         socket.join(result.room.code)
-        console.log(`Room created: ${result.room.code} by ${displayName} (${socket.id})`)
+        console.log(`Room created: ${result.room.code} by ${name} (${socket.id}) [${character || 'miku'}]`)
         callback({ ok: true, room: result.room })
       } else {
         callback({ ok: false, error: result.error || 'Failed to create room' })
@@ -101,12 +102,14 @@ io.on('connection', (socket) => {
   })
 
   // Join Room
-  socket.on('join-room', ({ roomCode, displayName }, callback) => {
+  socket.on('join-room', ({ roomCode, roomId, displayName, username, character }, callback) => {
     try {
-      const result = store.joinRoom({ roomCode, socketId: socket.id, displayName })
+      const code = roomCode ?? roomId
+      const name = displayName ?? username
+      const result = store.joinRoom({ roomCode: code, socketId: socket.id, displayName: name, character })
       if (result.ok) {
         socket.join(result.room.code)
-        console.log(`Socket ${socket.id} joined room ${result.room.code}`)
+        console.log(`Socket ${socket.id} joined room ${result.room.code} as ${character || 'miku'}`)
         
         // Notify others in the room
         io.to(result.room.code).emit('room-update', result.room)
@@ -118,6 +121,22 @@ io.on('connection', (socket) => {
     } catch (err) {
       console.error(err)
       callback({ ok: false, error: err.message })
+    }
+  })
+
+  // Change Avatar Character in Room
+  socket.on('set-character', ({ roomCode, character }, callback) => {
+    try {
+      const result = store.setCharacter({ roomCode, socketId: socket.id, character })
+      if (result.ok) {
+        io.to(result.room.code).emit('room-update', result.room)
+        if (callback) callback({ ok: true, room: result.room })
+      } else {
+        if (callback) callback({ ok: false, error: result.error || 'Failed to update character' })
+      }
+    } catch (err) {
+      console.error(err)
+      if (callback) callback({ ok: false, error: err.message })
     }
   })
 
@@ -348,6 +367,27 @@ io.on('connection', (socket) => {
       console.error(err)
       callback({ ok: false, error: err.message })
     }
+  })
+
+  // Avatar pose relay for the 3D room. Volatile (drop stale frames instead of queueing) and
+  // rate-limited so a slow client can never build latency for everyone else.
+  socket.on('player-pose', (pose) => {
+    const code = pose?.roomCode
+    if (typeof code !== 'string' || !socket.rooms.has(code)) return
+    const now = Date.now()
+    if (now - (socket.data.lastPoseAt || 0) < 30) return
+    const { x, y, z, ry, s, a } = pose
+    if (![x, y, z, ry, s].every(Number.isFinite)) return
+    socket.data.lastPoseAt = now
+    socket.to(code).volatile.emit('player-pose', {
+      id: socket.id,
+      x: Math.max(-10, Math.min(10, x)),
+      y: Math.max(-1, Math.min(6, y)),
+      z: Math.max(-10, Math.min(10, z)),
+      ry,
+      s: Math.max(0, Math.min(8, s)),
+      a: a ? 1 : 0,
+    })
   })
 
   // Disconnect

@@ -2,6 +2,9 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import ReactPlayer from 'react-player'
 import { useRoom } from '../context/RoomContext.jsx'
+import TVModal from './TVModal.jsx'
+import SongSearch from './SongSearch.jsx'
+import QueueSidebar from './QueueSidebar.jsx'
 import { useVideoSync } from '../hooks/useVideoSync.js'
 import { readMediaDuration, seekMediaTo } from '../shared/mediaElement.js'
 import {
@@ -21,7 +24,7 @@ import {
   IoMusicalNotesSharp,
 } from 'react-icons/io5'
 
-export default function KaraokePlayer() {
+export default function KaraokePlayer({ tvElement = null, panelOpen = false, onClosePanel }) {
   const { room, user, controlPlayback, playNext, advanceRotation, setLyricsOffset } = useRoom()
   const isHost = user?.isHost
   const currentSong = room?.currentSong
@@ -57,6 +60,8 @@ export default function KaraokePlayer() {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.code === 'Space') {
+        // In the 3D room Space is jump; it only toggles playback while the TV menu is open.
+        if (!panelOpen) return
         const target = e.target
         const isInput =
           target?.tagName === 'INPUT' ||
@@ -76,7 +81,7 @@ export default function KaraokePlayer() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isHost, currentSong, isPlaying, currentTime, controlPlayback, showFullLyrics])
+  }, [isHost, currentSong, isPlaying, currentTime, controlPlayback, showFullLyrics, panelOpen])
   const syncedLyricLines = useMemo(
     () => parseSyncedLyrics(syncedLyrics),
     [syncedLyrics],
@@ -219,8 +224,56 @@ export default function KaraokePlayer() {
     setLyricsOffset(lyricsOffsetSec + deltaSec)
   }
 
+  const videoScreen = currentSong ? (
+    <div className="tv-player-fill">
+      <ReactPlayer
+              ref={playerRef}
+              src={currentSong.url}
+              playing={isPlaying}
+              controls={false} // Custom controls only
+              volume={volume}
+              muted={muted}
+              playsInline
+              width="100%"
+              height="100%"
+              style={{ position: 'absolute', top: 0, left: 0 }}
+              onTimeUpdate={handleTimeUpdate}
+              onDurationChange={handleDurationChange}
+              onEnded={handleEnded}
+              onError={(error) => console.error('Player failed to load:', error)}
+              config={{
+                youtube: {
+                  disablekb: 1,
+                  fs: 0,
+                  rel: 0,
+                },
+              }}
+            />
+    </div>
+  ) : (
+    <div className="tv-idle-screen">
+      <IoMusicalNotesSharp className="tv-idle-icon" />
+      <h3>SakiKaraoke</h3>
+      <p>Hold <kbd>E</kbd> to pick a song</p>
+    </div>
+  )
+
+  const currentLyricText = lyricWindow.current?.text || ''
+  const nextLyricText = lyricWindow.next?.text || ''
+
   return (
-    <div className="karaoke-player-container">
+    <>
+      {/* The video lives on the in-room TV (CSS3D layer), not in the page layout */}
+      {tvElement && createPortal(videoScreen, tvElement)}
+
+      {/* On-screen lyrics while the TV menu is closed */}
+      {!panelOpen && currentSong && hasSyncedLyrics && (currentLyricText || nextLyricText) && (
+        <div className="room-lyrics-hud" aria-live="polite">
+          <p className="room-lyrics-current">{currentLyricText || '\u266A'}</p>
+          {nextLyricText && <p className="room-lyrics-next">{nextLyricText}</p>}
+        </div>
+      )}
+
       {/* Full-screen Lyrics Modal */}
       {showFullLyrics && (hasSyncedLyrics || hasPlainLyrics) && createPortal(
         <div className="fullscreen-lyrics-modal" onClick={() => setShowFullLyrics(false)}>
@@ -258,6 +311,11 @@ export default function KaraokePlayer() {
         document.body
       )}
 
+
+      <TVModal open={panelOpen} onClose={onClosePanel}>
+        <div className="tv-modal-grid">
+          <div className="tv-modal-main">
+            <div className="karaoke-player-container tv-player-panel">
       {/* Player Header */}
       <div className="player-header">
         <div className="singer-info">
@@ -290,44 +348,6 @@ export default function KaraokePlayer() {
         </div>
       </div>
 
-      {/* Video Screen */}
-      <div className="video-screen-wrapper">
-        {currentSong ? (
-          <div className="player-wrapper">
-            <ReactPlayer
-              ref={playerRef}
-              src={currentSong.url}
-              playing={isPlaying}
-              controls={false} // Custom controls only
-              volume={volume}
-              muted={muted}
-              playsInline
-              width="100%"
-              height="100%"
-              style={{ position: 'absolute', top: 0, left: 0 }}
-              onTimeUpdate={handleTimeUpdate}
-              onDurationChange={handleDurationChange}
-              onEnded={handleEnded}
-              onError={(error) => console.error('Player failed to load:', error)}
-              config={{
-                youtube: {
-                  disablekb: 1,
-                  fs: 0,
-                  rel: 0,
-                },
-              }}
-            />
-          </div>
-        ) : (
-          <div className="placeholder-screen">
-            <div className="placeholder-content">
-              <IoMusicalNotesSharp className="music-icon" />
-              <h3>No Song Active</h3>
-              <p>Add a YouTube video link below to start singing.</p>
-            </div>
-          </div>
-        )}
-      </div>
 
       {currentSong && (hasSyncedLyrics || hasPlainLyrics || currentSong.instrumental) && (
         <section className="lyrics-panel" aria-label="Lyrics">
@@ -500,6 +520,13 @@ export default function KaraokePlayer() {
           )}
         </div>
       </div>
-    </div>
+
+            </div>
+            <SongSearch />
+          </div>
+          <QueueSidebar />
+        </div>
+      </TVModal>
+    </>
   )
 }

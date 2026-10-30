@@ -18,11 +18,17 @@ function normalizeRoomCode(roomCode) {
   return String(roomCode ?? '').trim().toUpperCase()
 }
 
-function makeUser(socketId, displayName, isHost) {
+function normalizeCharacter(character) {
+  const c = String(character || 'miku').trim().toLowerCase()
+  return c === 'teto' ? 'teto' : 'miku'
+}
+
+function makeUser(socketId, displayName, isHost, character = 'miku') {
   return {
     id: socketId,
     displayName: String(displayName || 'Singer').trim().slice(0, 40) || 'Singer',
     isHost,
+    character: normalizeCharacter(character),
   }
 }
 
@@ -65,9 +71,9 @@ export function createRoomStore({
     throw new Error('Could not generate a unique room code')
   }
 
-  function createRoom({ socketId, displayName }) {
+  function createRoom({ socketId, displayName, username, character = 'miku' }) {
     const code = createUniqueCode()
-    const user = makeUser(socketId, displayName, true)
+    const user = makeUser(socketId, displayName ?? username, true, character)
     const room = {
       code,
       hostId: socketId,
@@ -93,11 +99,11 @@ export function createRoomStore({
     return { ok: true, room: publicState(room) }
   }
 
-  function joinRoom({ roomCode, socketId, displayName }) {
-    const room = getRoom(roomCode)
+  function joinRoom({ roomCode, roomId, socketId, displayName, username, character = 'miku' }) {
+    const room = getRoom(roomCode ?? roomId)
     if (!room) return { ok: false, error: 'Room not found' }
 
-    const user = makeUser(socketId, displayName, false)
+    const user = makeUser(socketId, displayName ?? username, false, character)
     room.users.set(socketId, user)
 
     if (!room.rotation.singerIds.includes(socketId)) {
@@ -105,6 +111,20 @@ export function createRoomStore({
     }
 
     socketRooms.set(socketId, room.code)
+
+    return { ok: true, room: publicState(room) }
+  }
+
+  function setCharacter({ roomCode, socketId, character }) {
+    const room = getRoom(roomCode)
+    if (!room) return { ok: false, error: 'Room not found' }
+    const existing = room.users.get(socketId)
+    if (!existing) return { ok: false, error: 'User not in room' }
+
+    room.users.set(socketId, {
+      ...existing,
+      character: normalizeCharacter(character),
+    })
 
     return { ok: true, room: publicState(room) }
   }
@@ -300,6 +320,7 @@ export function createRoomStore({
     leaveRoom,
     playNextSong,
     publicState,
+    setCharacter,
     setLyricsOffset,
     setRotationMode,
   }

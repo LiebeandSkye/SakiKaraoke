@@ -1,38 +1,30 @@
+import { useState, useCallback, lazy, Suspense } from 'react'
 import { RoomProvider, useRoom } from './context/RoomContext.jsx'
 import RoomLobby from './components/RoomLobby.jsx'
 import KaraokePlayer from './components/KaraokePlayer.jsx'
-import QueueSidebar from './components/QueueSidebar.jsx'
-import SongSearch from './components/SongSearch.jsx'
-import { IoMicSharp } from 'react-icons/io5'
 import './App.css'
+import './room3d.css'
+
+// Three.js + VRM are only needed once a room is joined
+const KaraokeRoom3D = lazy(() => import('./components/KaraokeRoom3D.jsx'))
 
 function MainApp() {
-  const { room, isConnected } = useRoom()
+  const { room } = useRoom()
+  const [tvElement, setTvElement] = useState(null)
+  const [tvOpen, setTvOpen] = useState(false)
+  const openTv = useCallback(() => setTvOpen(true), [])
+  const closeTv = useCallback(() => setTvOpen(false), [])
 
   if (!room) {
     return <RoomLobby />
   }
 
   return (
-    <div className="karaoke-app-layout animated-fade-in">
-      <header className="app-header">
-        <div className="logo-section">
-          <IoMicSharp className="logo-icon" />
-          <h2>SakiKaraoke</h2>
-        </div>
-        <div className="connection-status">
-          <span className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`}></span>
-          <span>{isConnected ? 'Realtime Connected' : 'Disconnected / Reconnecting...'}</span>
-        </div>
-      </header>
-
-      <div className="app-main-body">
-        <main className="player-column">
-          <KaraokePlayer />
-          <SongSearch />
-        </main>
-        <QueueSidebar />
-      </div>
+    <div className="karaoke-room-app animated-fade-in">
+      <Suspense fallback={<div className="room-loader room-loader-plain">Loading 3D room…</div>}>
+        <KaraokeRoom3D onTvElement={setTvElement} onOpenTv={openTv} tvOpen={tvOpen} />
+      </Suspense>
+      <KaraokePlayer tvElement={tvElement} panelOpen={tvOpen} onClosePanel={closeTv} />
     </div>
   )
 }
